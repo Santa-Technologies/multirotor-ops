@@ -1,0 +1,28 @@
+---
+description: Working rules for the Kern multirotor ops tool. Apply to every code change.
+alwaysApply: true
+---
+
+# Working rules
+
+Full spec: `docs/spec.md`. Deploy and environment setup: `docs/deploy.md`.
+
+- Work one phase at a time. The next phase starts only after the current phase's acceptance criteria pass. List the files you will touch before writing code.
+- The pricing engine is the source of truth: pricing math lives only in `lib/pricing`. Never duplicate pricing math in UI components.
+- Every schema change goes through a Drizzle migration (`db/schema.ts` → `npm run db:generate` → commit `drizzle/`). Never edit the database by hand.
+- Money in integer euro cents, EUR only in the database. Convert at the edge. Quantities are integers.
+- Price snapshots and sent quotes are immutable. Changes create new rows or versions.
+- Every external API call goes through an adapter with timeouts, retries and logged errors. No API keys in code; secrets only in environment variables, documented in `.env.example`.
+- Write Vitest tests for all business logic and Playwright tests for the quote flow.
+- UI copy is plain English. Dates as DD.MM.YYYY. Numbers in German locale on screens, English locale in quote text.
+- When an API's behaviour is unclear, stop and ask instead of guessing field names. Read the provider's current docs before implementing an adapter.
+- No LLM processing of customer messages. Pasted messages are stored as raw text only.
+- Approved distributors: China-free, EU when that is the best offer.
+
+# Project conventions
+
+- Next.js 16 App Router: the request gate is `proxy.ts` (not `middleware.ts`). Cache Components are on, so code that reads cookies, headers or the database must sit inside `<Suspense>` or a cached function.
+- Authorise in the data layer too: server pages, actions and route handlers call `requireUser()` from `lib/auth/current-user.ts` rather than relying on the proxy alone.
+- Sign-in is restricted to `ALLOWED_EMAILS`; check it with `lib/auth/allowlist.ts`. Roles live in `users.role`.
+- Server-only modules import `server-only`. Database access goes through `getDb()` from `db/index.ts`.
+- Run `npm run typecheck && npm run lint && npm test && npm run build` before pushing.
