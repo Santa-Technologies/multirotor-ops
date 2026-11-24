@@ -5,7 +5,7 @@ config({ path: [".env.local", ".env"], quiet: true });
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./db/schema.ts",
+  schema: "./db/schema/index.ts",
   out: "./drizzle",
   casing: "snake_case",
   // Only manage our own schema; Supabase owns auth, storage and the rest.
