@@ -46,12 +46,13 @@ Copy the URI from Supabase → **Connect** → **Session pooler** and replace `[
 
 A successful run ends with `[✓] migrations applied successfully!`. drizzle-kit prints no error when it fails: the output stops at `applying migrations...` and the exit code is 1. Run `npm run db:migrate; echo "exit=$?"` to see which.
 
-| Migration                  | Creates                                                                                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `0000_init_users`          | `users`                                                                                                       |
-| `0001_phase1_data_model`   | Every other table, enums, foreign keys, row-level security policies by role                                   |
-| `0002_audit_triggers`      | `activity_log` on every insert, update and delete; `created_by` / `updated_at`; append-only `price_snapshots` |
-| `0003_seed_reference_data` | Products Pilot H743, Kern Nano, Kern Nano Plus; Pilot H743 quote settings; Justus's `users` row (admin)       |
+| Migration                            | Creates                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `0000_init_users`                    | `users`                                                                                                       |
+| `0001_phase1_data_model`             | Every other table, enums, foreign keys, row-level security policies by role                                   |
+| `0002_audit_triggers`                | `activity_log` on every insert, update and delete; `created_by` / `updated_at`; append-only `price_snapshots` |
+| `0003_seed_reference_data`           | Products Pilot H743, Kern Nano, Kern Nano Plus; Pilot H743 quote settings; Justus's `users` row (admin)       |
+| `0004_pilot_h743_margin_and_capital` | Pilot H743 minimum margin 25% and cost of capital 1% per month                                                |
 
 After phase 1, Supabase → **Table Editor** shows 17 tables. Tables, roles and open values: [data model](data-model.md). Never change the schema in the Supabase dashboard; change `db/schema/`, run `npm run db:generate`, and commit the migration.
 

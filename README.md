@@ -2,7 +2,7 @@
 
 Kern's internal tool for customer requests, BOM costs and quotes. Full spec: [docs/spec.md](docs/spec.md).
 
-Status: **phase 1** (data model, role-based row-level security, activity log and reference seed). Data model notes: [docs/data-model.md](docs/data-model.md).
+Status: **phase 2** (pure pricing engine in `lib/pricing`; see [docs/pricing.md](docs/pricing.md)). Phase 1: data model, role-based row-level security, activity log and reference seed. Data model notes: [docs/data-model.md](docs/data-model.md).
 
 ## Stack
 
@@ -38,6 +38,7 @@ Setup for Supabase, Vercel and email delivery: [docs/deploy.md](docs/deploy.md).
 - `app/login`, `app/auth/signout` – email + password sign-in and sign-out
 - `app/(app)/settings/password` – change your own password
 - `proxy.ts` – refreshes the Supabase session and gates every request
+- `lib/pricing/` – pure pricing engine (no I/O): unit cost, price range, surcharge, delivery, cash flow, warnings, approval, quote text
 - `lib/auth/` – allowlist, role write permissions, current user, users-row sync
 - `lib/supabase/` – server, browser and proxy clients
 - `db/schema/`, `drizzle/` – Drizzle schema and migrations
