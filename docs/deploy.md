@@ -42,9 +42,18 @@ npm ci
 DATABASE_URL='<Session pooler URI from Supabase → Connect, port 5432>?sslmode=require' npm run db:migrate
 ```
 
-Copy the URI from Supabase → **Connect** → **Session pooler** and replace `[YOUR-PASSWORD]` with the database password in your own terminal. It looks like `postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`. Do not paste `drizzle/*.sql` into the SQL editor instead: drizzle-kit would not record it and would try to apply it again. Afterwards, Supabase → **Table Editor** shows a `users` table.
+Copy the URI from Supabase → **Connect** → **Session pooler** and replace `[YOUR-PASSWORD]` with the database password in your own terminal. It looks like `postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`. Do not paste `drizzle/*.sql` into the SQL editor instead: drizzle-kit would not record it and would try to apply it again.
 
-Phase 0 creates only `public.users` (id, name, email, role, timestamps) with row-level security enabled and no policies, so the public key cannot read it through the Supabase REST API. The app reads it server-side through `DATABASE_URL`. Never change the schema in the Supabase dashboard; change `db/schema.ts`, run `npm run db:generate`, and commit the migration.
+A successful run ends with `[✓] migrations applied successfully!`. drizzle-kit prints no error when it fails: the output stops at `applying migrations...` and the exit code is 1. Run `npm run db:migrate; echo "exit=$?"` to see which.
+
+| Migration                  | Creates                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `0000_init_users`          | `users`                                                                                                       |
+| `0001_phase1_data_model`   | Every other table, enums, foreign keys, row-level security policies by role                                   |
+| `0002_audit_triggers`      | `activity_log` on every insert, update and delete; `created_by` / `updated_at`; append-only `price_snapshots` |
+| `0003_seed_reference_data` | Products Pilot H743, Kern Nano, Kern Nano Plus; Pilot H743 quote settings; Justus's `users` row (admin)       |
+
+After phase 1, Supabase → **Table Editor** shows 17 tables. Tables, roles and open values: [data model](data-model.md). Never change the schema in the Supabase dashboard; change `db/schema/`, run `npm run db:generate`, and commit the migration.
 
 ## 4. Vercel project
 
@@ -67,8 +76,8 @@ Phase 0 creates only `public.users` (id, name, email, role, timestamps) with row
 ## 5. Allowlist and roles
 
 - `ALLOWED_EMAILS` is the gate. Anyone not on it is rejected at the login form before their password is sent to Supabase, and on every request by `proxy.ts`. Removing an email ends that person's session on their next request, even if their Supabase user still exists.
-- The optional `:role` suffix (`admin`, `sales`, `engineering`, `supply`; default `sales`) is written to `users.role` only when that person first signs in. After that, change roles in the database through a migration or, from phase 1, the Settings page.
-- Planned roles: Justus `admin`, Nils `sales`, Marc `engineering`, Volker `supply`.
+- The optional `:role` suffix (`admin`, `sales`, `engineering`, `supply`; default `sales`) is written to `users.role` only when that person first signs in. After that, change roles in the database through a migration or, in a later phase, the Settings page.
+- Planned roles: Justus `admin` (`j.nikolaus@santatech.io`), Nils `sales`, Marc `engineering`, Volker `supply`. **Nils's, Marc's and Volker's emails are still TBD.** Their `users` rows cannot be seeded in advance because each row's id must be their Supabase Auth user id. Once their emails are known: add them to `ALLOWED_EMAILS` with their role, redeploy, create their Supabase users (step 4), and their rows appear on first sign-in.
 
 ## 6. Smoke test after the first deploy
 
