@@ -5,6 +5,7 @@ import postgres from "postgres";
 
 import { getDatabaseUrl } from "@/lib/env";
 
+import { sslOptionFor } from "./connection-options";
 import * as schema from "./schema";
 
 type Database = ReturnType<typeof createDb>;
@@ -13,8 +14,14 @@ let cached: Database | undefined;
 
 /** Builds the Drizzle client on top of a postgres.js connection. */
 function createDb() {
+  const url = getDatabaseUrl();
+  const ssl = sslOptionFor(url);
   // prepare: false is required by the Supabase transaction pooler (port 6543).
-  const client = postgres(getDatabaseUrl(), { prepare: false, max: 1 });
+  const client = postgres(url, {
+    prepare: false,
+    max: 1,
+    ...(ssl === undefined ? {} : { ssl }),
+  });
   return drizzle(client, { schema, casing: "snake_case" });
 }
 

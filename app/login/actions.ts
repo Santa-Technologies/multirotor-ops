@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { findAllowedEntry, normalizeEmail } from "@/lib/auth/allowlist";
 import { ensureUserRow } from "@/lib/auth/sync-user";
+import { describeDbError } from "@/lib/db-error";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { NOT_ALLOWED_MESSAGE, type LoginState } from "./login-state";
@@ -59,7 +60,9 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   try {
     await ensureUserRow(data.user.id, entry);
   } catch (err) {
-    console.error("Could not create users row", { userId: data.user.id, err });
+    console.error(
+      `Could not create users row ${JSON.stringify({ userId: data.user.id, ...describeDbError(err) })}`,
+    );
     await supabase.auth.signOut();
     return {
       status: "error",
