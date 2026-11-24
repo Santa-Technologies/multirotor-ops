@@ -45,12 +45,12 @@ export const quoteSettings = pgTable(
     // Board quantity → factor applied to the manual cost estimate.
     costFactors: jsonb().$type<Record<string, number>>().notNull(),
     marginPct: pct().notNull(),
-    // Approval is required below this margin; not yet set by Justus.
+    // Approval is required below this margin (Pilot H743: 25%).
     minMarginPct: pct(),
     floorCents: integer().notNull(),
     stdDepositPct: pct().notNull(),
     surcharges: jsonb().$type<QuoteSurcharges>().notNull(),
-    // Monthly cost of capital for the financing cost; not yet set by Justus.
+    // Monthly cost of capital for the financing cost (Pilot H743: 1%).
     costOfCapitalPct: pct(),
     savingsPct: pct().notNull(),
     costRiskPct: pct().notNull(),

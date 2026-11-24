@@ -29,10 +29,10 @@ The same triggers fill `created_by` on insert and set `updated_at` on every upda
 
 ## Seed
 
-`drizzle/0003_seed_reference_data.sql`, applied by `npm run db:migrate`:
+`drizzle/0003_seed_reference_data.sql` and `0004_pilot_h743_margin_and_capital.sql`, applied by `npm run db:migrate`:
 
 - Products: Pilot H743 (`cost_plus`), Kern Nano and Kern Nano Plus (`list_price`). SKUs and Kern list prices are not set yet.
-- Pilot H743 `quote_settings`: €86 manual cost at 100 units; factors 1.00 / 0.85 / 0.78 / 0.75 / 0.70 at 100 / 1,000 / 5,000 / 10,000 / 20,000; margin 30%; floor €80; deposit 50%; 12 weeks lead; 2,500 per month; 30 days validity; 10% adjustment threshold; surcharge rates 1% / 1%; savings 5%, cost risk 15%; approval below 30% deposit or above 60 payment days.
+- Pilot H743 `quote_settings`: €86 manual cost at 100 units; factors 1.00 / 0.85 / 0.78 / 0.75 / 0.70 at 100 / 1,000 / 5,000 / 10,000 / 20,000; margin 30%; floor €80; deposit 50%; 12 weeks lead; 2,500 per month; 30 days validity; 10% adjustment threshold; surcharge rates 1% / 1%; savings 5%, cost risk 15%; approval below 30% deposit, above 60 payment days or below 25% margin; cost of capital 1% per month. The minimum margin and cost of capital were decided by Justus on 24 Nov 2026 and set by `0004_pilot_h743_margin_and_capital`.
 - Users: Justus (`j.nikolaus@santatech.io`, admin), if his Supabase Auth user exists. **Nils, Marc and Volker: emails TBD.** Their rows cannot be seeded ahead of time because `users.id` must equal their Supabase Auth id; they get a row on first sign-in, with the role from `ALLOWED_EMAILS`.
 
 ## Choices the spec left open
@@ -45,7 +45,6 @@ Each can be changed with a migration; enum values can be added without rewriting
 - `requests.source_channel`: the four channels in the spec (`linkedin`, `signal`, `email`, `trade_fair`); optional.
 - `requests.summary` (required) comes from the phase 4 quick-add, which lists a one-line summary as required.
 - `quote_settings` has columns for every default the pricing engine section names but the data model table does not: `manual_cost_cents`, `savings_pct`, `cost_risk_pct`, `min_margin_pct`, `approval_min_deposit_pct`, `approval_max_payment_days`. `surcharges` holds `{ depositRatePct, paymentTermsRatePct }`.
-- **Not yet known, left empty:** `quote_settings.min_margin_pct` (the product's minimum margin for approval) and `cost_of_capital_pct` (monthly cost of capital). Phase 2 needs both from the existing calculator.
 - `manual_quotes` has separate `mpn` and `assembler` columns; exactly one must be set.
 - Quote numbers must match `MR-YYYY-NNNN`; `(number, version)` is unique so a sent quote can get new versions.
 - One current BOM version per product is enforced by a partial unique index.

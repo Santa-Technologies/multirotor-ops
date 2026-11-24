@@ -1,6 +1,10 @@
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { products, quoteSettings } from "@/db/schema";
+import { PILOT_H743_SETTINGS } from "@/lib/pricing";
 import {
   asUser,
   assertDisposableDatabase,
@@ -73,7 +77,7 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
     ]);
     const [{ count }] =
       await sql`select count(*)::int as count from drizzle.__drizzle_migrations`;
-    expect(count).toBe(4);
+    expect(count).toBe(5);
 
     await sql`delete from public.users where id = ${JUSTUS}`;
     await sql`delete from public.users where id = ${SALES}`;
@@ -82,30 +86,39 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
   });
 
   it("seeds the products and the Pilot H743 calculator defaults", async () => {
-    const products = await sql`select name, pricing_mode from products order by name`;
-    expect(products).toEqual([
+    const productRows = await sql`select name, pricing_mode from products order by name`;
+    expect(productRows).toEqual([
       { name: "Kern Nano", pricing_mode: "list_price" },
       { name: "Kern Nano Plus", pricing_mode: "list_price" },
       { name: "Pilot H743", pricing_mode: "cost_plus" },
     ]);
 
-    const [settings] = await sql`
-      select s.manual_cost_cents, s.cost_factors, s.margin_pct::float8 as margin_pct, s.floor_cents,
-             s.std_deposit_pct::float8 as std_deposit_pct, s.lead_weeks, s.monthly_capacity,
-             s.validity_days, s.adj_threshold_pct::float8 as adj_threshold_pct
-      from quote_settings s join products p on p.id = s.product_id
-      where p.name = 'Pilot H743'`;
-    expect(settings).toEqual({
-      manual_cost_cents: 8600,
-      cost_factors: { "100": 1, "1000": 0.85, "5000": 0.78, "10000": 0.75, "20000": 0.7 },
-      margin_pct: 30,
-      floor_cents: 8000,
-      std_deposit_pct: 50,
-      lead_weeks: 12,
-      monthly_capacity: 2500,
-      validity_days: 30,
-      adj_threshold_pct: 10,
-    });
+    // The seeded row (0003 + 0004) must match the pricing engine's defaults field for field.
+    const db = drizzle(sql, { casing: "snake_case" });
+    const [row] = await db
+      .select({ settings: quoteSettings, adjThresholdPct: quoteSettings.adjThresholdPct })
+      .from(quoteSettings)
+      .innerJoin(products, eq(products.id, quoteSettings.productId))
+      .where(eq(products.name, "Pilot H743"));
+    const pricing = Object.fromEntries(
+      Object.keys(PILOT_H743_SETTINGS).map((key) => [
+        key,
+        row.settings[key as keyof typeof PILOT_H743_SETTINGS],
+      ]),
+    );
+    expect(pricing).toEqual(PILOT_H743_SETTINGS);
+    expect(row.settings.minMarginPct).toBe(25);
+    expect(row.settings.costOfCapitalPct).toBe(1);
+    expect(row.adjThresholdPct).toBe(10);
+  });
+
+  it("keeps an admin's later edit when the 0004 values migration reruns", async () => {
+    await sql`update quote_settings set min_margin_pct = 27`;
+    await sql`delete from drizzle.__drizzle_migrations where id = (select max(id) from drizzle.__drizzle_migrations)`;
+    await migrateDatabase(sql);
+    const [row] = await sql`select min_margin_pct::float8 as m from quote_settings`;
+    expect(row.m).toBe(27);
+    await sql`update quote_settings set min_margin_pct = 25`;
   });
 
   it("does not let a sales user edit a BOM", async () => {
