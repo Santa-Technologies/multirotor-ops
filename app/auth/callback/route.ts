@@ -1,54 +1,32 @@
-import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { findAllowedEntry } from "@/lib/auth/allowlist";
-import { ensureUserRow } from "@/lib/auth/sync-user";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { parseEmailLinkParams } from "@/lib/auth/email-link";
 
 /**
- * Completes a magic-link sign-in. Accepts either the PKCE `code` (default
- * Supabase email template) or `token_hash` + `type` (recommended template,
- * works when the link is opened on another device), re-checks the allowlist,
- * creates the users row on first login and sends the user to the dashboard.
+ * Landing URL of the magic link (the `emailRedirectTo` Supabase allowlists).
+ * It never verifies anything on GET: email security scanners open links
+ * before the user does, and verifying here would use up the one-time token.
+ * Valid links are forwarded to /auth/confirm, where the user clicks to sign in.
  */
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const code = searchParams.get("code");
-  const tokenHash = searchParams.get("token_hash");
-  const type = searchParams.get("type") as EmailOtpType | null;
+  const link = parseEmailLinkParams(searchParams);
 
-  const loginWithError = (error: string) =>
-    NextResponse.redirect(new URL(`/login?error=${error}`, origin));
-
-  const supabase = await createSupabaseServerClient();
-
-  const { error } = code
-    ? await supabase.auth.exchangeCodeForSession(code)
-    : tokenHash && type
-      ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
-      : { error: new Error("missing code") };
-
-  if (error) return loginWithError("link_invalid");
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const entry = findAllowedEntry(user?.email);
-
-  // Someone could create a Supabase user directly with the public key; the
-  // allowlist is re-checked here so such a session is discarded immediately.
-  if (!user || !entry) {
-    await supabase.auth.signOut();
-    return loginWithError("not_allowed");
+  if (link.kind === "invalid") {
+    // Supabase appends error_code (e.g. otp_expired) when its own /verify step failed.
+    console.warn("Magic link without usable parameters", {
+      errorCode: searchParams.get("error_code"),
+      type: searchParams.get("type"),
+    });
+    return NextResponse.redirect(new URL("/login?error=link_invalid", origin));
   }
 
-  try {
-    await ensureUserRow(user.id, entry);
-  } catch (err) {
-    console.error("Could not create users row", { userId: user.id, err });
-    await supabase.auth.signOut();
-    return loginWithError("server");
+  const confirm = new URL("/auth/confirm", origin);
+  if (link.kind === "token_hash") {
+    confirm.searchParams.set("token_hash", link.tokenHash);
+    confirm.searchParams.set("type", link.type);
+  } else {
+    confirm.searchParams.set("code", link.code);
   }
-
-  return NextResponse.redirect(new URL("/", origin));
+  return NextResponse.redirect(confirm);
 }

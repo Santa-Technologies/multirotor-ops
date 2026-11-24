@@ -25,15 +25,20 @@ Nothing below has been done yet. The code was verified locally against a local P
      - `https://*-<vercel-team-slug>.vercel.app/**` (preview deployments)
      - `http://localhost:3000/auth/callback` (local development)
 6. **Authentication → Emails → SMTP Settings**: enable custom SMTP with Resend (`smtp.resend.com`, port 465, user `resend`, password = a Resend API key, sender e.g. `ops@<your-domain>`). Verify the domain in Resend first.
-7. **Authentication → Emails → Templates → Magic Link** (recommended): replace the link with
+7. **Authentication → Emails → Templates → Magic Link** (**required**): replace the whole message body with the HTML below and save. The subject can stay as it is.
 
+   <!-- prettier-ignore -->
    ```html
-   <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email"
-     >Sign in to Multirotor Ops</a
-   >
+   <h2>Sign in to Multirotor Ops</h2>
+   <p>Open the link below, then click "Continue signing in". The link works once and expires after one hour.</p>
+   <p><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email">Sign in to Multirotor Ops</a></p>
    ```
 
-   This makes the link work when it is opened in a different browser or on a phone, and it brings each user back to the deployment they started from (production or preview). With the default template the link only works in the browser that requested it. `/auth/callback` accepts both forms.
+   Why this is required:
+   - Supabase's default template links to `{{ .ConfirmationURL }}`, which uses up the one-time token at Supabase and then hands the app a PKCE `code`. That code only works in the browser that requested the link. Email security scanners (for example Microsoft Defender Safe Links) also open the link first and use up the token. Both cases end on "The sign-in link is invalid or has expired."
+   - With this template the link goes straight to the app (`/auth/callback`, the URL that is already on the Redirect URLs list). The app does not verify anything until the user clicks **Continue signing in** on `/auth/confirm`. A scanner that only opens the link therefore cannot use up the token, and the link works on any device or browser.
+   - `{{ .RedirectTo }}` brings each user back to the deployment they started from (production or preview). It only works while that URL is on the Redirect URLs list in step 5. Otherwise Supabase substitutes the Site URL and the link breaks.
+   - Keep link or click tracking off for the sending domain in Resend. Rewritten links do not work.
 
 ## 3. Database migrations
 
@@ -73,8 +78,16 @@ Phase 0 creates only `public.users` (id, name, email, role, timestamps) with row
 
 1. Open the production URL. You are redirected to `/login`.
 2. Enter an email that is not on the allowlist: "This email is not allowed to sign in." appears and no email is sent.
-3. Each of the four users enters their email, opens the link and sees the sidebar (Dashboard, Requests, Customers, Products & BOM, Costs, Quotes, Settings) with their name and role at the bottom.
+3. Each of the four users enters their email, opens the link, clicks **Continue signing in** and sees the sidebar (Dashboard, Requests, Customers, Products & BOM, Costs, Quotes, Settings) with their name and role at the bottom.
 4. In Supabase → Table Editor → `users` there are four rows with the right roles.
+
+## Troubleshooting sign-in
+
+- **"The sign-in link is invalid or has expired."**
+  - Check that the Magic Link template matches step 7. With the default template, links break whenever a mail scanner opens them first or they are opened in another browser.
+  - Each link works once and only the newest link is valid, so request a new one and use the latest email.
+  - In Vercel → Logs, look for `Magic link verification failed` or `Magic link without usable parameters`. These lines show Supabase's error code (for example `otp_expired`) and never contain the token.
+- **The link opens the production home page instead of `/auth/callback`**: the deployment's callback URL is missing from the Redirect URLs list (step 5).
 
 ## Local development
 
