@@ -2,7 +2,7 @@
 
 Kern's internal tool for customer requests, BOM costs and quotes. Full spec: [docs/spec.md](docs/spec.md).
 
-Status: **phase 0** (project setup, magic-link login for allowlisted users, empty app shell).
+Status: **phase 0** (project setup, email + password login for allowlisted users, empty app shell).
 
 ## Stack
 
@@ -35,7 +35,8 @@ Setup for Supabase, Vercel and email delivery: [docs/deploy.md](docs/deploy.md).
 ## Layout
 
 - `app/(app)/` – signed-in pages behind the sidebar shell
-- `app/login`, `app/auth/*` – magic-link sign-in, callback and sign-out
+- `app/login`, `app/auth/signout` – email + password sign-in and sign-out
+- `app/(app)/settings/password` – change your own password
 - `proxy.ts` – refreshes the Supabase session and gates every request
 - `lib/auth/` – allowlist, current user, users-row sync
 - `lib/supabase/` – server, browser and proxy clients

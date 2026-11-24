@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isEmailAllowed } from "@/lib/auth/allowlist";
 import { getSupabasePublicEnv } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/auth/confirm"];
+const PUBLIC_PATHS = ["/login"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

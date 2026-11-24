@@ -24,7 +24,7 @@ export const requireUser = cache(async (): Promise<User> => {
 
   const [row] = await getDb().select().from(users).where(eq(users.id, user.id)).limit(1);
 
-  // The row is created in /auth/callback; without it the user has no role.
+  // The row is created by the login action; without it the user has no role.
   if (!row) redirect("/login?error=server");
 
   return row;
