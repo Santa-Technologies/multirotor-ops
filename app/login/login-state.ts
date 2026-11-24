@@ -1,6 +1,5 @@
 export type LoginState =
   | { status: "idle" }
-  | { status: "sent"; email: string }
   | { status: "rejected"; message: string; email: string }
   | { status: "error"; message: string; email: string };
 

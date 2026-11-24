@@ -16,11 +16,10 @@ export const metadata: Metadata = { title: "Sign in" };
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_allowed: NOT_ALLOWED_MESSAGE,
-  link_invalid: "The sign-in link is invalid or has expired. Request a new one.",
   server: "Sign-in failed on our side. Try again or tell Justus.",
 };
 
-/** Login form with the error passed back from /auth/callback or the proxy, if any. */
+/** Login form with the error passed back by the proxy or the shell layout, if any. */
 async function LoginFormWithError({
   searchParams,
 }: Pick<PageProps<"/login">, "searchParams">) {
@@ -35,9 +34,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-lg">Multirotor Ops</CardTitle>
-          <CardDescription>
-            Sign in with your Kern email. We send you a one-time link.
-          </CardDescription>
+          <CardDescription>Sign in with your Kern email and password.</CardDescription>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<LoginForm />}>

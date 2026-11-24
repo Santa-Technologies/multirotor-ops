@@ -6,28 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { requestMagicLink } from "./actions";
+import { signIn } from "./actions";
 import type { LoginState } from "./login-state";
 
 const initialState: LoginState = { status: "idle" };
 
-/** Email form that requests a magic link and shows the result inline. */
+/** Email and password form; shows sign-in errors inline. */
 export function LoginForm({ initialError }: { initialError?: string }) {
-  const [state, formAction, pending] = useActionState(requestMagicLink, initialState);
+  const [state, formAction, pending] = useActionState(signIn, initialState);
 
-  if (state.status === "sent") {
-    return (
-      <p className="text-sm" role="status">
-        Check <span className="font-medium">{state.email}</span> for a sign-in link. You
-        can close this tab.
-      </p>
-    );
-  }
-
-  const message =
-    state.status === "rejected" || state.status === "error"
-      ? state.message
-      : initialError;
+  const message = state.status === "idle" ? initialError : state.message;
+  const describedBy = message ? "login-message" : undefined;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -40,9 +29,21 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           autoComplete="email"
           required
           placeholder="name@company.com"
-          defaultValue={"email" in state ? state.email : undefined}
+          defaultValue={state.status === "idle" ? undefined : state.email}
           aria-invalid={message ? true : undefined}
-          aria-describedby={message ? "login-message" : undefined}
+          aria-describedby={describedBy}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          aria-invalid={message ? true : undefined}
+          aria-describedby={describedBy}
         />
       </div>
       {message ? (
@@ -51,8 +52,11 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         </p>
       ) : null}
       <Button type="submit" disabled={pending}>
-        {pending ? "Sending…" : "Send sign-in link"}
+        {pending ? "Signing in…" : "Sign in"}
       </Button>
+      <p className="text-xs text-muted-foreground">
+        Forgot your password? Ask Justus to set a new one.
+      </p>
     </form>
   );
 }
