@@ -8,6 +8,27 @@
       "when": 1795520078808,
       "tag": "0000_init_users",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795529085509,
+      "tag": "0001_phase1_data_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795529086155,
+      "tag": "0002_audit_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795529086804,
+      "tag": "0003_seed_reference_data",
+      "breakpoints": true
     }
   ]
 }
