@@ -25,6 +25,7 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
   let sql: Sql;
   let bomVersionId: string;
   let bomLineId: string;
+  let partId: string;
 
   /** Users as they exist after first sign-in, plus a BOM engineering builds through RLS. */
   async function createFixtures() {
@@ -35,14 +36,18 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
       (${ENGINEERING}, 'Engineering', 'eng@kern.test', 'engineering'),
       (${SUPPLY}, 'Supply', 'supply@kern.test', 'supply')`;
     await asUser(sql, ENGINEERING, async (tx) => {
+      const [part] = await tx`
+        insert into parts (mpn, manufacturer) values ('STM32H743VIT6', 'ST')
+        returning id`;
+      partId = part.id;
       const [version] = await tx`
         insert into bom_versions (product_id, version, is_current)
         select id, 'A', true from products where name = 'Pilot H743'
         returning id`;
       bomVersionId = version.id;
       const [line] = await tx`
-        insert into bom_lines (bom_version_id, mpn, qty_per_board)
-        values (${bomVersionId}, 'STM32H743VIT6', 1) returning id`;
+        insert into bom_lines (bom_version_id, part_id, qty_per_board)
+        values (${bomVersionId}, ${partId}, 1) returning id`;
       bomLineId = line.id;
     });
   }
@@ -77,7 +82,7 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
     ]);
     const [{ count }] =
       await sql`select count(*)::int as count from drizzle.__drizzle_migrations`;
-    expect(count).toBe(5);
+    expect(count).toBe(6);
 
     await sql`delete from public.users where id = ${JUSTUS}`;
     await sql`delete from public.users where id = ${SALES}`;
@@ -85,12 +90,24 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
     await createFixtures();
   });
 
-  it("seeds the products and the Pilot H743 calculator defaults", async () => {
-    const productRows = await sql`select name, pricing_mode from products order by name`;
+  it("seeds product lines, CoPilot renames and the Pilot H743 calculator defaults", async () => {
+    const lineRows = await sql`select name from product_lines order by name`;
+    expect(lineRows).toEqual([
+      { name: "CoPilot Nano" },
+      { name: "CoPilot Nano Plus" },
+      { name: "Pilot H743" },
+    ]);
+
+    const productRows =
+      await sql`select name, variant_label, pricing_mode from products order by name`;
     expect(productRows).toEqual([
-      { name: "Kern Nano", pricing_mode: "list_price" },
-      { name: "Kern Nano Plus", pricing_mode: "list_price" },
-      { name: "Pilot H743", pricing_mode: "cost_plus" },
+      { name: "CoPilot Nano", variant_label: "Standard", pricing_mode: "list_price" },
+      {
+        name: "CoPilot Nano Plus",
+        variant_label: "Standard",
+        pricing_mode: "list_price",
+      },
+      { name: "Pilot H743", variant_label: "Standard", pricing_mode: "cost_plus" },
     ]);
 
     // The seeded row (0003 + 0004) must match the pricing engine's defaults field for field.
@@ -114,14 +131,17 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
 
   it("keeps an admin's later edit when the 0004 values migration reruns", async () => {
     await sql`update quote_settings set min_margin_pct = 27`;
-    await sql`delete from drizzle.__drizzle_migrations where id = (select max(id) from drizzle.__drizzle_migrations)`;
+    // Only drop the 0004 journal row (5th applied migration); later ones stay applied.
+    const applied =
+      await sql`select id from drizzle.__drizzle_migrations order by created_at, id`;
+    await sql`delete from drizzle.__drizzle_migrations where id = ${applied[4]!.id}`;
     await migrateDatabase(sql);
     const [row] = await sql`select min_margin_pct::float8 as m from quote_settings`;
     expect(row.m).toBe(27);
     await sql`update quote_settings set min_margin_pct = 25`;
   });
 
-  it("does not let a sales user edit a BOM", async () => {
+  it("does not let a sales user edit a BOM or parts", async () => {
     await asUser(sql, SALES, async (tx) => {
       const updated =
         await tx`update bom_lines set qty_per_board = 99 where id = ${bomLineId}`;
@@ -131,6 +151,9 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
       const versions =
         await tx`update bom_versions set notes = 'sales edit' where id = ${bomVersionId}`;
       expect(versions.count).toBe(0);
+      const partsUpdate =
+        await tx`update parts set manufacturer = 'Nope' where id = ${partId}`;
+      expect(partsUpdate.count).toBe(0);
     });
 
     await expect(
@@ -138,7 +161,7 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
         sql,
         SALES,
         (tx) =>
-          tx`insert into bom_lines (bom_version_id, mpn, qty_per_board) values (${bomVersionId}, 'X', 1)`,
+          tx`insert into bom_lines (bom_version_id, part_id, qty_per_board) values (${bomVersionId}, ${partId}, 1)`,
       ),
     ).rejects.toMatchObject({ code: "42501" });
 
@@ -147,6 +170,29 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
     // Sales can still read the BOM.
     const visible = await asUser(sql, SALES, (tx) => tx`select id from bom_lines`);
     expect(visible).toHaveLength(1);
+  });
+
+  it("reuses one part row when the same MPN is on Pilot and CoPilot BOMs", async () => {
+    await asUser(sql, ENGINEERING, async (tx) => {
+      const [nanoVersion] = await tx`
+        insert into bom_versions (product_id, version, is_current)
+        select id, 'A', true from products where name = 'CoPilot Nano'
+        returning id`;
+      await tx`
+        insert into bom_lines (bom_version_id, part_id, qty_per_board)
+        values (${nanoVersion.id}, ${partId}, 1)`;
+    });
+
+    const parts =
+      await sql`select count(*)::int as count from parts where lower(mpn) = 'stm32h743vit6'`;
+    expect(parts[0]!.count).toBe(1);
+
+    const usage = await sql`
+      select count(distinct bv.product_id)::int as products
+      from bom_lines bl
+      join bom_versions bv on bv.id = bl.bom_version_id
+      where bl.part_id = ${partId}`;
+    expect(usage[0]!.products).toBe(2);
   });
 
   it("lets each role write its own tables", async () => {
@@ -202,9 +248,9 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
       (tx) => tx`delete from bom_lines where id = ${bomLineId}`,
     );
     const [removed] = await sql`
-      select diff ->> 'mpn' as mpn from activity_log where entity = 'bom_lines' and entity_id = ${bomLineId}
+      select diff ->> 'part_id' as part_id from activity_log where entity = 'bom_lines' and entity_id = ${bomLineId}
       and action = 'delete'`;
-    expect(removed.mpn).toBe("STM32H743VIT6");
+    expect(removed.part_id).toBe(partId);
   });
 
   it("records server writes under app.user_id", async () => {

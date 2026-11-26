@@ -1,8 +1,8 @@
 # multirotor-ops
 
-Kern's internal tool for customer requests, BOM costs and quotes. Full spec: [docs/spec.md](docs/spec.md).
+Kern's internal ops hub for Supply, Demand and Tech: shared parts, product lines/variants, BOM cost and (soon) inventory. Full spec: [docs/spec.md](docs/spec.md).
 
-Status: **phase 2** (pure pricing engine in `lib/pricing`; see [docs/pricing.md](docs/pricing.md)). Phase 1: data model, role-based row-level security, activity log and reference seed. Data model notes: [docs/data-model.md](docs/data-model.md).
+Status: **phase 3** (product lines, variants, shared parts catalog, BOM CSV import). Phase 2: pure pricing engine in `lib/pricing` ([docs/pricing.md](docs/pricing.md)). Data model notes: [docs/data-model.md](docs/data-model.md).
 
 ## Stack
 
@@ -35,10 +35,13 @@ Setup for Supabase, Vercel and email delivery: [docs/deploy.md](docs/deploy.md).
 ## Layout
 
 - `app/(app)/` – signed-in pages behind the sidebar shell
+- `app/(app)/products` – product lines, variants, BOM viewer and CSV import
+- `app/(app)/parts` – shared parts catalog with “used in”
 - `app/login`, `app/auth/signout` – email + password sign-in and sign-out
 - `app/(app)/settings/password` – change your own password
 - `proxy.ts` – refreshes the Supabase session and gates every request
 - `lib/pricing/` – pure pricing engine (no I/O): unit cost, price range, surcharge, delivery, cash flow, warnings, approval, quote text
+- `lib/bom/` – CSV parse and BOM import (upserts shared parts)
 - `lib/auth/` – allowlist, role write permissions, current user, users-row sync
 - `lib/supabase/` – server, browser and proxy clients
 - `db/schema/`, `drizzle/` – Drizzle schema and migrations

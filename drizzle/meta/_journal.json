@@ -36,6 +36,13 @@
       "when": 1795529814011,
       "tag": "0004_pilot_h743_margin_and_capital",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795670965347,
+      "tag": "0005_phase3_parts_product_lines",
+      "breakpoints": true
     }
   ]
 }

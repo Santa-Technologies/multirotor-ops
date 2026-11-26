@@ -25,7 +25,9 @@ export const WRITE_RULES = {
   // Sales logs requests; engineering triages them (status, owner, requirement).
   requests: { insert: ["sales"], update: ["sales", "engineering"], delete: ["sales"] },
   requirements: all("engineering"),
+  product_lines: all("engineering"),
   products: all("engineering"),
+  parts: all("engineering"),
   list_prices: all("engineering"),
   bom_versions: all("engineering"),
   bom_lines: all("engineering"),

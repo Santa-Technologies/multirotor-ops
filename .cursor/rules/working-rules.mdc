@@ -11,13 +11,16 @@ Full spec: `docs/spec.md`. Deploy and environment setup: `docs/deploy.md`.
 - The pricing engine is the source of truth: pricing math lives only in `lib/pricing`. Never duplicate pricing math in UI components.
 - Every schema change goes through a Drizzle migration (`db/schema.ts` → `npm run db:generate` → commit `drizzle/`). Never edit the database by hand.
 - Money in integer euro cents, EUR only in the database. Convert at the edge. Quantities are integers.
-- Price snapshots and sent quotes are immutable. Changes create new rows or versions.
+- Price snapshots and sent quotes are immutable. Changes create new rows or versions. Pricing playground drafts are internal scenarios until the customer-facing send phase ships.
 - Every external API call goes through an adapter with timeouts, retries and logged errors. No API keys in code; secrets only in environment variables, documented in `.env.example`.
-- Write Vitest tests for all business logic and Playwright tests for the quote flow.
-- UI copy is plain English. Dates as DD.MM.YYYY. Numbers in German locale on screens, English locale in quote text.
+- Write Vitest tests for all business logic and Playwright tests for the pricing playground / later quote flow.
+- UI copy is plain English. Dates as DD.MM.YYYY. Numbers in German locale on screens, English locale in quote text. Playground and draft quote copy must stay clearly indicative / internal.
 - When an API's behaviour is unclear, stop and ask instead of guessing field names. Read the provider's current docs before implementing an adapter.
-- No LLM processing of customer messages. Pasted messages are stored as raw text only.
+- No LLM processing of customer messages. Pasted customer messages are stored as raw text only. LLM / document AI on **supplier** offer PDFs is allowed; parsed price and stock must be human-confirmed before write.
+- Inventory (parts on-hand / on-order, finished goods, assembly lots) is in near-term scope; customer-facing quote send is deferred.
+- Parts are shared across BOMs: one `parts` row per MPN, referenced by `bom_lines.part_id`. Do not duplicate part identity per product.
 - Approved distributors: China-free, EU when that is the best offer.
+- Pipedrive is one-way import until customer-facing quotes; do not write deal stages back early.
 
 # Project conventions
 
