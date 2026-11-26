@@ -1,0 +1,3 @@
+ALTER POLICY "cost_runs_insert" ON "cost_runs" TO authenticated WITH CHECK (exists (select 1 from public.users u where u.id = (select auth.uid()) and u.role in ('admin', 'engineering')));--> statement-breakpoint
+ALTER POLICY "cost_runs_update" ON "cost_runs" TO authenticated USING (exists (select 1 from public.users u where u.id = (select auth.uid()) and u.role in ('admin', 'engineering'))) WITH CHECK (exists (select 1 from public.users u where u.id = (select auth.uid()) and u.role in ('admin', 'engineering')));--> statement-breakpoint
+ALTER POLICY "cost_runs_delete" ON "cost_runs" TO authenticated USING (exists (select 1 from public.users u where u.id = (select auth.uid()) and u.role in ('admin', 'engineering')));

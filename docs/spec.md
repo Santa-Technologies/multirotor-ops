@@ -112,7 +112,7 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 `lib/pricing` pure functions and Vitest reference cases.
 
-### Phase 3 – Parts, product lines, variants, BOM
+### Phase 3 – Parts, product lines, variants, BOM (done)
 
 - `parts`, `product_lines`; products are variants under a line; BOM lines reference `part_id`.
 - BOM import (CSV/XLSX) upserts parts and creates a bom_version for a variant.
@@ -122,8 +122,9 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 ### Phase 4 – Cost run v0 + pricing playground
 
-- Manual/assembly prices + known part prices → cost_run per variant.
-- Quote UI as playground: live calc, warnings, save draft scenario; no “sent to customer”.
+- Manual/assembly prices + known part prices → cost_run per variant (`lib/costing`).
+- Costs page: enter supplier/assembly quotes, run cost, view tiers and flags.
+- Quotes page as playground: live calc from `lib/pricing`, warnings, save internal draft; no customer send.
 
 **Done when:** Nils can change qty/terms on Pilot H743 and see prices from the latest cost run in under 10 minutes.
 
