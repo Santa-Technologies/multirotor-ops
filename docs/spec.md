@@ -160,6 +160,8 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 - Requests CRUD, Marc owner/status, optional deal/contact link.
 - Pipedrive one-way sync: companies, contacts, deals/pipelines.
 - Dashboard: Marc’s open requests, deal overview, cost/inventory flags.
+- Tables: `pipedrive_deals`; `requests.pipedrive_deal_id` optional.
+- UI: `/requests`, `/customers` (Refresh from Pipedrive); dashboard sections.
 
 **Done when:** Marc can report weekly work from the app; commercial deal overview does not depend on perfect Pipedrive hygiene for tech work items.
 

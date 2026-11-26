@@ -49,11 +49,15 @@ export const requests = pgTable(
     ownerId: uuid().references(() => users.id, { onDelete: "set null" }),
     requirementId: uuid().references(() => requirements.id, { onDelete: "set null" }),
     dueDate: date(),
+    /** Optional soft link to a mirrored Pipedrive deal (phase 8). */
+    pipedriveDealId: integer(),
   },
   (t) => [
     index().on(t.companyId),
     index().on(t.status),
     index().on(t.requirementId),
+    index().on(t.ownerId),
+    index().on(t.pipedriveDealId),
     check("requests_quantity_positive", sql`${t.quantity} > 0`),
     ...rolePolicies("requests"),
   ],

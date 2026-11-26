@@ -42,7 +42,7 @@ Supply may write all three; everyone signed in may read.
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 6     | Nexar adapter writes `price_snapshots` + auto-creates `distributors` (China-free gate); optional later `price_snapshots.part_id`                 |
 | 7     | **Done:** `suppliers`, `part_suppliers`, `rfq_threads` (subject token + Resend ids), `rfq_offers` (pending_confirm → confirmed writes `manual_quotes`) |
-| 8     | `pipedrive_deals` or soft ids on companies/contacts/requests; `requests.pipedrive_deal_id` optional                                              |
+| 8     | **Done:** `pipedrive_deals` (one-way mirror); `requests.pipedrive_deal_id` optional; companies/contacts keep `pipedrive_id`                       |
 | 9     | Quote send fields already largely present (`status`, `sent_at`, approval); tighten copy and workflows                                            |
 
 ## Who may write what
@@ -51,7 +51,7 @@ Everyone signed in reads every table. Writes follow role; admin may write everyt
 
 | Tables                                                                       | Writers besides admin                                            |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| companies, contacts, quotes                                                  | sales                                                            |
+| companies, contacts, quotes, pipedrive_deals                                 | sales                                                            |
 | requests                                                                     | sales (insert, update, delete); engineering (update, for triage) |
 | requirements, product_lines, products, parts, list_prices, bom_versions, bom_lines | engineering                                                |
 | manual_quotes, assembly_prices, part_inventory, finished_goods, assembly_lots | supply                                                          |

@@ -22,6 +22,8 @@ export const WRITE_RULES = {
   users: all(),
   companies: all("sales"),
   contacts: all("sales"),
+  // One-way Pipedrive mirror; sales may refresh import.
+  pipedrive_deals: all("sales"),
   // Sales logs requests; engineering triages them (status, owner, requirement).
   requests: { insert: ["sales"], update: ["sales", "engineering"], delete: ["sales"] },
   requirements: all("engineering"),
