@@ -48,7 +48,8 @@ Everyone signed in reads every table. Writes follow role; admin may write everyt
 | requests                                                                     | sales (insert, update, delete); engineering (update, for triage) |
 | requirements, product_lines, products, parts, list_prices, bom_versions, bom_lines | engineering                                                |
 | manual_quotes, assembly_prices                                               | supply                                                           |
-| users, distributors, price_snapshots, cost_runs, quote_settings              | admin only                                                       |
+| users, distributors, price_snapshots, quote_settings                         | admin only                                                       |
+| cost_runs                                                                    | engineering (refresh after BOM / manual prices); admin           |
 | activity_log                                                                 | nobody; written only by triggers                                 |
 
 `price_snapshots` and `activity_log` are append-only: a trigger rejects every update and delete, including the table owner's.

@@ -2,7 +2,7 @@
 
 Kern's internal ops hub for Supply, Demand and Tech: shared parts, product lines/variants, BOM cost and (soon) inventory. Full spec: [docs/spec.md](docs/spec.md).
 
-Status: **phase 3** (product lines, variants, shared parts catalog, BOM CSV import). Phase 2: pure pricing engine in `lib/pricing` ([docs/pricing.md](docs/pricing.md)). Data model notes: [docs/data-model.md](docs/data-model.md).
+Status: **phase 4** (cost run v0 + pricing playground). Phase 3: product lines, variants, shared parts, BOM CSV import. Pricing engine: [docs/pricing.md](docs/pricing.md). Data model: [docs/data-model.md](docs/data-model.md).
 
 ## Stack
 
@@ -37,6 +37,9 @@ Setup for Supabase, Vercel and email delivery: [docs/deploy.md](docs/deploy.md).
 - `app/(app)/` – signed-in pages behind the sidebar shell
 - `app/(app)/products` – product lines, variants, BOM viewer and CSV import
 - `app/(app)/parts` – shared parts catalog with “used in”
+- `app/(app)/costs` – manual quotes, assembly prices, cost run v0
+- `app/(app)/quotes` – indicative pricing playground (internal drafts only)
+- `lib/costing/` – BOM + manual price → cost_run tiers
 - `app/login`, `app/auth/signout` – email + password sign-in and sign-out
 - `app/(app)/settings/password` – change your own password
 - `proxy.ts` – refreshes the Supabase session and gates every request

@@ -36,7 +36,8 @@ export const WRITE_RULES = {
   price_snapshots: all(),
   manual_quotes: all("supply"),
   assembly_prices: all("supply"),
-  cost_runs: all(),
+  // Engineering refreshes cost after BOM/manual price changes; cron will use admin.
+  cost_runs: all("engineering"),
   quote_settings: all(),
   quotes: all("sales"),
 } as const satisfies Record<string, WriteRules>;
