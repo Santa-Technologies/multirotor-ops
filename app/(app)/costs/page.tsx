@@ -44,8 +44,8 @@ export default async function CostsPage() {
       <div>
         <h1 className="text-xl font-semibold">Costs</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cost per board by volume tier from BOM material and assembly prices. Indicative
-          until distributor APIs land.
+          Cost per board by volume tier from BOM material, approved distributor API prices
+          (Nexar when configured) and assembly quotes. Weekly cron Monday 06:00 CET.
         </p>
       </div>
 

@@ -35,9 +35,20 @@ export async function runCostAction(
     const result = await runCostRunForProduct(productId, user.id);
     revalidatePath("/costs");
     revalidatePath("/quotes");
+    revalidatePath("/");
+    const nexarNote =
+      result.snapshotCount > 0
+        ? ` ${result.snapshotCount} API snapshot(s).`
+        : process.env.NEXAR_CLIENT_ID
+          ? " No new API snapshots (check credentials or MPN coverage)."
+          : " Nexar not configured — manual quotes only.";
+    const errNote =
+      result.providerErrors.length > 0
+        ? ` Provider notes: ${result.providerErrors.slice(0, 2).join("; ")}`
+        : "";
     return {
       status: "ok",
-      message: `Cost run saved. Coverage ${result.coveragePct} %, ${result.flagCount} flag(s).`,
+      message: `Cost run saved. Coverage ${result.coveragePct} %, ${result.flagCount} flag(s).${nexarNote}${errNote}`,
     };
   } catch (error) {
     return {

@@ -5,13 +5,20 @@ export type CostBomLine = {
   qtyPerBoard: number;
 };
 
-export type CostManualQuote = {
+/** Unified offer from a manual quote or an approved distributor API snapshot. */
+export type CostPartOffer = {
   mpn: string;
   qty: number;
   unitPriceCents: number;
-  /** ISO date YYYY-MM-DD; null means no expiry. */
+  /** ISO date YYYY-MM-DD; null means no expiry (API snapshots use null). */
   validUntil: string | null;
+  stock?: number | null;
+  lifecycle?: string | null;
+  source?: "manual" | "api";
 };
+
+/** @deprecated Prefer CostPartOffer; kept as an alias for call sites. */
+export type CostManualQuote = CostPartOffer;
 
 export type CostAssemblyPrice = {
   qtyTier: number;
@@ -21,18 +28,23 @@ export type CostAssemblyPrice = {
 };
 
 export type CostRunFlag = {
-  code: "missing" | "stale" | "assembly_missing" | "assembly_stale";
+  code:
+    | "missing"
+    | "stale"
+    | "assembly_missing"
+    | "assembly_stale"
+    | "low_stock"
+    | "eol";
   mpn?: string;
   detail?: string;
 };
 
 export type ComputeCostRunInput = {
   lines: CostBomLine[];
-  manualQuotes: CostManualQuote[];
+  /** Merged manual + API offers; cheapest fitting break wins. */
+  manualQuotes: CostPartOffer[];
   assemblyPrices: CostAssemblyPrice[];
-  /** Board quantities to price (usually the cost-factor keys). */
   boardTiers: number[];
-  /** "Today" as YYYY-MM-DD for expiry checks. */
   asOfDate: string;
 };
 
@@ -42,28 +54,30 @@ export type ComputeCostRunResult = {
   coveragePct: number;
 };
 
+const EOL_RE = /\b(eol|nrnd|obsolete|end[\s_-]?of[\s_-]?life)\b/i;
+
 /** True when validUntil is set and strictly before asOfDate. */
 function isExpired(validUntil: string | null, asOfDate: string) {
   return validUntil !== null && validUntil < asOfDate;
 }
 
 /**
- * Picks the cheapest manual quote whose break qty fits the needed part qty.
- * Falls back to the cheapest quote overall when none fit.
+ * Picks the cheapest offer whose break qty fits the needed part qty.
+ * Falls back to the cheapest offer overall when none fit.
  */
-function pickPartQuote(
-  quotes: CostManualQuote[],
+function pickPartOffer(
+  offers: CostPartOffer[],
   neededQty: number,
   asOfDate: string,
-): { quote: CostManualQuote; stale: boolean } | null {
-  if (quotes.length === 0) return null;
+): { offer: CostPartOffer; stale: boolean } | null {
+  if (offers.length === 0) return null;
 
-  const fitting = quotes.filter((q) => q.qty <= neededQty);
-  const pool = fitting.length > 0 ? fitting : quotes;
-  const quote = pool.reduce((best, q) =>
+  const fitting = offers.filter((q) => q.qty <= neededQty);
+  const pool = fitting.length > 0 ? fitting : offers;
+  const offer = pool.reduce((best, q) =>
     q.unitPriceCents < best.unitPriceCents ? q : best,
   );
-  return { quote, stale: isExpired(quote.validUntil, asOfDate) };
+  return { offer, stale: isExpired(offer.validUntil, asOfDate) };
 }
 
 /** Picks assembly for a board tier: exact tier, else nearest lower, else cheapest. */
@@ -77,20 +91,23 @@ function pickAssembly(
   const lower = prices
     .filter((p) => p.qtyTier <= boardQty)
     .sort((a, b) => b.qtyTier - a.qtyTier)[0];
-  const price = exact ?? lower ?? prices.reduce((best, p) =>
-    p.unitPriceCents < best.unitPriceCents ? p : best,
-  );
+  const price =
+    exact ??
+    lower ??
+    prices.reduce((best, p) =>
+      p.unitPriceCents < best.unitPriceCents ? p : best,
+    );
   return { price, stale: isExpired(price.validUntil, asOfDate) };
 }
 
 /**
- * Builds per-tier material + assembly costs from BOM lines and manual prices.
- * Coverage is the share of BOM lines that had at least one manual quote.
- * Pure: no I/O.
+ * Builds per-tier material + assembly costs from BOM lines and part offers
+ * (manual quotes and/or approved API snapshots). Coverage is the share of
+ * distinct MPNs that had at least one offer. Pure: no I/O.
  */
 export function computeCostRun(input: ComputeCostRunInput): ComputeCostRunResult {
   const flags: CostRunFlag[] = [];
-  const byMpn = new Map<string, CostManualQuote[]>();
+  const byMpn = new Map<string, CostPartOffer[]>();
   for (const q of input.manualQuotes) {
     const key = q.mpn.toLowerCase();
     const list = byMpn.get(key) ?? [];
@@ -98,7 +115,6 @@ export function computeCostRun(input: ComputeCostRunInput): ComputeCostRunResult
     byMpn.set(key, list);
   }
 
-  // First-seen casing per lower(mpn) for stable missing flags.
   const distinctLines = new Map<string, string>();
   for (const line of input.lines) {
     const key = line.mpn.toLowerCase();
@@ -117,23 +133,53 @@ export function computeCostRun(input: ComputeCostRunInput): ComputeCostRunResult
   const tiers: Record<string, CostRunTier> = {};
   let assemblyMissingLogged = false;
   let assemblyStaleLogged = false;
+  const seenLowStock = new Set<string>();
+  const seenEol = new Set<string>();
+  const seenStale = new Set<string>();
 
   for (const boardQty of input.boardTiers) {
     let materialCents = 0;
     for (const line of input.lines) {
       const needed = line.qtyPerBoard * boardQty;
-      const picked = pickPartQuote(
+      const picked = pickPartOffer(
         byMpn.get(line.mpn.toLowerCase()) ?? [],
         needed,
         input.asOfDate,
       );
       if (!picked) continue;
-      materialCents += picked.quote.unitPriceCents * line.qtyPerBoard;
-      if (picked.stale) {
+      materialCents += picked.offer.unitPriceCents * line.qtyPerBoard;
+
+      const mpnKey = line.mpn.toLowerCase();
+      if (picked.stale && !seenStale.has(mpnKey)) {
+        seenStale.add(mpnKey);
         flags.push({
           code: "stale",
           mpn: line.mpn,
-          detail: `Quote expired ${picked.quote.validUntil}`,
+          detail: `Quote expired ${picked.offer.validUntil}`,
+        });
+      }
+      if (
+        picked.offer.stock != null &&
+        picked.offer.stock < needed &&
+        !seenLowStock.has(mpnKey)
+      ) {
+        seenLowStock.add(mpnKey);
+        flags.push({
+          code: "low_stock",
+          mpn: line.mpn,
+          detail: `Stock ${picked.offer.stock} < need ${needed} at ${boardQty} boards`,
+        });
+      }
+      if (
+        picked.offer.lifecycle &&
+        EOL_RE.test(picked.offer.lifecycle) &&
+        !seenEol.has(mpnKey)
+      ) {
+        seenEol.add(mpnKey);
+        flags.push({
+          code: "eol",
+          mpn: line.mpn,
+          detail: picked.offer.lifecycle,
         });
       }
     }
@@ -165,15 +211,5 @@ export function computeCostRun(input: ComputeCostRunInput): ComputeCostRunResult
     };
   }
 
-  // Deduplicate stale flags per MPN (same part flagged once per run).
-  const seenStale = new Set<string>();
-  const deduped = flags.filter((f) => {
-    if (f.code !== "stale" || !f.mpn) return true;
-    const key = f.mpn.toLowerCase();
-    if (seenStale.has(key)) return false;
-    seenStale.add(key);
-    return true;
-  });
-
-  return { tiers, flags: deduped, coveragePct };
+  return { tiers, flags, coveragePct };
 }

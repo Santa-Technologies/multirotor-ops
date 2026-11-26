@@ -70,12 +70,15 @@ After phase 5, Supabase → **Table Editor** shows 22 tables. Tables, roles and 
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key                                                  | No (public, protected by RLS) |
    | `DATABASE_URL`                         | Transaction pooler URL, port 6543, with password                 | **Yes**                       |
    | `ALLOWED_EMAILS`                       | `justus@…:admin,nils@…:sales,marc@…:engineering,volker@…:supply` | Treat as private              |
+   | `CRON_SECRET`                          | Long random string; Vercel Cron sends `Authorization: Bearer …`  | **Yes**                       |
+   | `NEXAR_CLIENT_ID`                      | Nexar application client id (`portal.nexar.com`)                 | Treat as private              |
+   | `NEXAR_CLIENT_SECRET`                  | Nexar application secret; scope `supply.domain`                  | **Yes**                       |
 
-   `NEXT_PUBLIC_*` values are inlined at build time, and Vercel applies env changes only to new deployments. Redeploy after changing any variable.
+   `NEXT_PUBLIC_*` values are inlined at build time, and Vercel applies env changes only to new deployments. Redeploy after changing any variable. Cost refresh still works without Nexar (manual quotes only); set both Nexar vars when credentials are ready.
 
 3. **Settings → Git**: the production branch is `main`. Every pull request gets a preview deployment automatically.
 4. **Settings → Deployment Protection**: by default, previews require a Vercel login on your team, and production is public (the app's own login still applies). The four users should use the production URL. If they need previews too, either add them to the Vercel team or turn off Vercel Authentication for previews.
-5. `vercel.json` pins functions to `fra1` (Frankfurt) so requests are processed in the EU next to the database.
+5. `vercel.json` pins functions to `fra1` (Frankfurt) and schedules **`GET /api/cron/weekly-cost`** every Monday at 05:00 UTC (06:00 CET). The route is public in `proxy.ts` but requires `Authorization: Bearer $CRON_SECRET`. Vercel Cron injects that header when `CRON_SECRET` is set in the project.
 
 ## 5. Allowlist and roles
 
