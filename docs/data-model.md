@@ -41,7 +41,7 @@ Supply may write all three; everyone signed in may read.
 | Phase | Tables / changes                                                                                                                                 |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 6     | Nexar adapter writes `price_snapshots` + auto-creates `distributors` (China-free gate); optional later `price_snapshots.part_id`                 |
-| 7     | `suppliers` (name, email, notes); `part_suppliers`; `rfq_threads` (part_id, supplier_id, status, message ids); `rfq_offers` (parsed draft → confirm) |
+| 7     | **Done:** `suppliers`, `part_suppliers`, `rfq_threads` (subject token + Resend ids), `rfq_offers` (pending_confirm → confirmed writes `manual_quotes`) |
 | 8     | `pipedrive_deals` or soft ids on companies/contacts/requests; `requests.pipedrive_deal_id` optional                                              |
 | 9     | Quote send fields already largely present (`status`, `sent_at`, approval); tighten copy and workflows                                            |
 
@@ -55,6 +55,8 @@ Everyone signed in reads every table. Writes follow role; admin may write everyt
 | requests                                                                     | sales (insert, update, delete); engineering (update, for triage) |
 | requirements, product_lines, products, parts, list_prices, bom_versions, bom_lines | engineering                                                |
 | manual_quotes, assembly_prices, part_inventory, finished_goods, assembly_lots | supply                                                          |
+| suppliers, part_suppliers, rfq_offers                                        | supply                                                           |
+| rfq_threads                                                                  | supply; engineering may insert (open RFQ)                        |
 | users, distributors, price_snapshots, quote_settings                         | admin only                                                       |
 | cost_runs                                                                    | engineering (refresh after BOM / manual prices); admin           |
 | activity_log                                                                 | nobody; written only by triggers                                 |
