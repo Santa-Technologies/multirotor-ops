@@ -26,13 +26,20 @@ companies / contacts / pipedrive deals ⋯ optional link ⋯ requests
 
 BOM import upserts `parts` by MPN and creates a new `bom_version` whose lines only store `part_id`, qty, designators, sourcing and alternates (MPN strings).
 
-## Later schema (not in phase 3)
+## Phase 5 schema (implemented)
 
-Documented so later phases do not reinvent names. Implement only via migrations when that phase starts.
+| Table             | Fields / notes                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `part_inventory`  | One row per `part_id`: `on_hand`, `on_order_qty`, `eta`, `po_ref`, `notes`                             |
+| `finished_goods`  | One row per variant (`product_id`): `qty`, `notes`                                                      |
+| `assembly_lots`   | WIP batches: `product_id`, `qty`, `status` (planned / in_progress / completed / cancelled), `eta`, …   |
+
+Supply may write all three; everyone signed in may read.
+
+## Later schema
 
 | Phase | Tables / changes                                                                                                                                 |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 5     | `part_inventory` (on_hand, on_order_qty, eta, po_ref); `finished_goods` (variant_id, qty); `assembly_lots` (variant_id, qty, status, eta, notes) |
 | 6     | Optional `price_snapshots.part_id`; keep `mpn` for raw fetch identity                                                                            |
 | 7     | `suppliers` (name, email, notes); `part_suppliers`; `rfq_threads` (part_id, supplier_id, status, message ids); `rfq_offers` (parsed draft → confirm) |
 | 8     | `pipedrive_deals` or soft ids on companies/contacts/requests; `requests.pipedrive_deal_id` optional                                              |
@@ -47,7 +54,7 @@ Everyone signed in reads every table. Writes follow role; admin may write everyt
 | companies, contacts, quotes                                                  | sales                                                            |
 | requests                                                                     | sales (insert, update, delete); engineering (update, for triage) |
 | requirements, product_lines, products, parts, list_prices, bom_versions, bom_lines | engineering                                                |
-| manual_quotes, assembly_prices                                               | supply                                                           |
+| manual_quotes, assembly_prices, part_inventory, finished_goods, assembly_lots | supply                                                          |
 | users, distributors, price_snapshots, quote_settings                         | admin only                                                       |
 | cost_runs                                                                    | engineering (refresh after BOM / manual prices); admin           |
 | activity_log                                                                 | nobody; written only by triggers                                 |

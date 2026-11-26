@@ -60,3 +60,11 @@ export const approvalStatus = pgEnum("approval_status", [
 ]);
 
 export const activityAction = pgEnum("activity_action", ["insert", "update", "delete"]);
+
+/** WIP / assembly batch lifecycle for finished-goods production. */
+export const assemblyLotStatus = pgEnum("assembly_lot_status", [
+  "planned",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);

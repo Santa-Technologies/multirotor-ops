@@ -55,8 +55,9 @@ A successful run ends with `[✓] migrations applied successfully!`. drizzle-kit
 | `0004_pilot_h743_margin_and_capital` | Pilot H743 minimum margin 25% and cost of capital 1% per month                                                |
 | `0005_phase3_parts_product_lines`    | `parts`, `product_lines`; products as variants; BOM lines → `part_id`; Kern → CoPilot rename; audit triggers  |
 | `0006_phase4_cost_runs_engineering_rls` | Lets engineering insert/update/delete `cost_runs` (alongside admin)                                    |
+| `0007_phase5_inventory_assembly`         | `part_inventory`, `finished_goods`, `assembly_lots`; supply RLS; audit triggers                        |
 
-After phase 3, Supabase → **Table Editor** shows 19 tables. Tables, roles and open values: [data model](data-model.md). Never change the schema in the Supabase dashboard; change `db/schema/`, run `npm run db:generate`, and commit the migration.
+After phase 5, Supabase → **Table Editor** shows 22 tables. Tables, roles and open values: [data model](data-model.md). Never change the schema in the Supabase dashboard; change `db/schema/`, run `npm run db:generate`, and commit the migration.
 
 ## 4. Vercel project
 

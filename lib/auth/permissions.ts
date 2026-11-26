@@ -36,6 +36,9 @@ export const WRITE_RULES = {
   price_snapshots: all(),
   manual_quotes: all("supply"),
   assembly_prices: all("supply"),
+  part_inventory: all("supply"),
+  finished_goods: all("supply"),
+  assembly_lots: all("supply"),
   // Engineering refreshes cost after BOM/manual price changes; cron will use admin.
   cost_runs: all("engineering"),
   quote_settings: all(),

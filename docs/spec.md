@@ -120,7 +120,7 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 **Done when:** Pilot H743 and at least one CoPilot variant share a part without duplicate part rows.
 
-### Phase 4 – Cost run v0 + pricing playground
+### Phase 4 – Cost run v0 + pricing playground (done)
 
 - Manual/assembly prices + known part prices → cost_run per variant (`lib/costing`).
 - Costs page: enter supplier/assembly quotes, run cost, view tiers and flags.
@@ -130,8 +130,9 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 ### Phase 5 – Inventory and assembly
 
-- Parts on-hand / on-order; finished goods by variant; assembly lots (qty, status, ETA).
-- Dashboard widgets for stock, WIP, delivery timeline.
+- `part_inventory`, `finished_goods`, `assembly_lots` (supply-writable).
+- Inventory page: parts stock, FG, open assembly lots with ETA/status.
+- Dashboard: stock totals, assembly timeline, Pilot cost freshness, recent drafts.
 
 **Done when:** Weekly review can answer what is assembling, due and on the shelf from the app.
 

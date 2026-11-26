@@ -50,6 +50,13 @@
       "when": 1795672737150,
       "tag": "0006_phase4_cost_runs_engineering_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795674963214,
+      "tag": "0007_phase5_inventory_assembly",
+      "breakpoints": true
     }
   ]
 }
