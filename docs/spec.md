@@ -140,8 +140,10 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 - PriceProvider + Nexar/Octopart adapter; snapshots; cron + refresh.
 - Cost runs prefer API prices; flags for missing/stale/EOL/low stock.
+- ECB daily XML → EUR conversion; China-free / approved distributor filter on snapshots.
+- `GET /api/cron/weekly-cost` (Bearer `CRON_SECRET`); Vercel Cron Mondays 05:00 UTC.
 
-**Done when:** Unattended run covers at least 90% of current Pilot BOM lines that are distributor-sourced.
+**Done when:** Unattended run covers at least 90% of current Pilot BOM lines that are distributor-sourced. *(Adapter + job shipped; 90% coverage needs live Nexar credentials and BOM data.)*
 
 ### Phase 7 – Supplier RFQ automation (email + PDF)
 

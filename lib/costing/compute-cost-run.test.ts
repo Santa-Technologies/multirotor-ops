@@ -27,13 +27,11 @@ describe("computeCostRun", () => {
     });
 
     expect(result.coveragePct).toBe(100);
-    // 100 boards: MCU at 100-break (€10) + 2× IMU (€2) = €14 material; assembly €5 + €100 setup/100 = €6
     expect(result.tiers["100"]).toEqual({
       materialCents: 1400,
       assemblyCents: 600,
       totalCents: 2000,
     });
-    // 1000 boards: MCU at 1000-break (€8) + 2× IMU = €12; assembly uses 100-tier (€5 + €10)
     expect(result.tiers["1000"]).toEqual({
       materialCents: 1200,
       assemblyCents: 510,
@@ -72,5 +70,36 @@ describe("computeCostRun", () => {
 
     expect(result.flags.some((f) => f.code === "stale" && f.mpn === "X")).toBe(true);
     expect(result.tiers["100"]!.materialCents).toBe(50);
+  });
+
+  it("prefers the cheaper API offer and flags low stock and EOL", () => {
+    const result = computeCostRun({
+      lines: [{ mpn: "IMU", qtyPerBoard: 1 }],
+      manualQuotes: [
+        {
+          mpn: "IMU",
+          qty: 100,
+          unitPriceCents: 500,
+          validUntil: null,
+          source: "manual",
+        },
+        {
+          mpn: "IMU",
+          qty: 100,
+          unitPriceCents: 400,
+          validUntil: null,
+          stock: 50,
+          lifecycle: "NRND",
+          source: "api",
+        },
+      ],
+      assemblyPrices: [],
+      boardTiers: [100],
+      asOfDate: "2026-11-26",
+    });
+
+    expect(result.tiers["100"]!.materialCents).toBe(400);
+    expect(result.flags.some((f) => f.code === "low_stock")).toBe(true);
+    expect(result.flags.some((f) => f.code === "eol")).toBe(true);
   });
 });

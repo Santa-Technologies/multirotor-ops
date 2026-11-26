@@ -40,7 +40,7 @@ Supply may write all three; everyone signed in may read.
 
 | Phase | Tables / changes                                                                                                                                 |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 6     | Optional `price_snapshots.part_id`; keep `mpn` for raw fetch identity                                                                            |
+| 6     | Nexar adapter writes `price_snapshots` + auto-creates `distributors` (China-free gate); optional later `price_snapshots.part_id`                 |
 | 7     | `suppliers` (name, email, notes); `part_suppliers`; `rfq_threads` (part_id, supplier_id, status, message ids); `rfq_offers` (parsed draft → confirm) |
 | 8     | `pipedrive_deals` or soft ids on companies/contacts/requests; `requests.pipedrive_deal_id` optional                                              |
 | 9     | Quote send fields already largely present (`status`, `sent_at`, approval); tighten copy and workflows                                            |
