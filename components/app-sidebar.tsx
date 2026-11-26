@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,7 +15,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  sidebarMenuButtonVariants,
 } from "@/components/ui/sidebar";
+import { cn } from "cn";
 import { NAV_ITEMS, type NavItem } from "@/lib/navigation";
 
 /** Whether this nav href matches the current path (exact for home, prefix otherwise). */
@@ -25,35 +27,56 @@ function pathIsActive(pathname: string, href: string) {
     : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Nav button with Links always present; active styling waits on pathname. */
-function NavLinkButton({
-  item,
-  isActive = false,
-}: {
-  item: NavItem;
-  isActive?: boolean;
-}) {
-  return (
-    <SidebarMenuButton
-      isActive={isActive}
-      tooltip={item.title}
-      render={<Link href={item.href} />}
-    >
-      <item.icon />
-      <span>{item.title}</span>
-    </SidebarMenuButton>
-  );
-}
-
-/** Reads the pathname so only this leaf suspends on dynamic routes. */
-function ActiveNavLinkButton({ item }: { item: NavItem }) {
-  const pathname = usePathname();
-  return <NavLinkButton item={item} isActive={pathIsActive(pathname, item.href)} />;
+function navLinkId(href: string) {
+  return `nav-link-${href === "/" ? "home" : href.replace(/^\//, "").replace(/\//g, "-")}`;
 }
 
 /**
- * Main navigation. Links stay in the static shell (and in the Suspense
- * fallback) so clicks never disappear while pathname resolves.
+ * Plain Next.js Link styled as a sidebar button. Stays mounted across navigations;
+ * active styling is applied by ActiveNavSynchronizer via data-active.
+ */
+function NavItemLink({ item }: { item: NavItem }) {
+  return (
+    <Link
+      id={navLinkId(item.href)}
+      href={item.href}
+      title={item.title}
+      data-slot="sidebar-menu-button"
+      data-sidebar="menu-button"
+      className={cn(sidebarMenuButtonVariants())}
+    >
+      <item.icon />
+      <span>{item.title}</span>
+    </Link>
+  );
+}
+
+/**
+ * Reads pathname in a Suspense boundary and toggles data-active on the
+ * already-mounted Links — so the Links themselves never remount when
+ * Cache Components suspends on usePathname.
+ */
+function ActiveNavSynchronizer() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    for (const item of NAV_ITEMS) {
+      const el = document.getElementById(navLinkId(item.href));
+      if (!el) continue;
+      if (pathIsActive(pathname, item.href)) {
+        el.setAttribute("data-active", "true");
+      } else {
+        el.removeAttribute("data-active");
+      }
+    }
+  }, [pathname]);
+
+  return null;
+}
+
+/**
+ * Main navigation. Links are always in the tree; only the active-state
+ * synchronizer suspends for Cache Components / usePathname.
  */
 export function AppSidebar({ footer }: { footer: React.ReactNode }) {
   return (
@@ -69,12 +92,13 @@ export function AppSidebar({ footer }: { footer: React.ReactNode }) {
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <Suspense fallback={<NavLinkButton item={item} />}>
-                    <ActiveNavLinkButton item={item} />
-                  </Suspense>
+                  <NavItemLink item={item} />
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+            <Suspense fallback={null}>
+              <ActiveNavSynchronizer />
+            </Suspense>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
