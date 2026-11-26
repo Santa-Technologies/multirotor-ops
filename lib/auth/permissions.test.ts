@@ -13,10 +13,13 @@ describe("canWrite", () => {
     }
   });
 
-  it("lets engineering and admin edit a BOM", () => {
+  it("lets engineering and admin edit a BOM, parts and product lines", () => {
     for (const action of WRITE_ACTIONS) {
       expect(canWrite("engineering", "bom_lines", action)).toBe(true);
+      expect(canWrite("engineering", "parts", action)).toBe(true);
+      expect(canWrite("engineering", "product_lines", action)).toBe(true);
       expect(canWrite("admin", "bom_lines", action)).toBe(true);
+      expect(canWrite("sales", "parts", action)).toBe(false);
     }
   });
 

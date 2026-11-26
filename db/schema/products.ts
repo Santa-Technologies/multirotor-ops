@@ -15,19 +15,65 @@ import { auditColumns } from "./columns";
 import { bomSourcing, pricingMode } from "./enums";
 import { rolePolicies } from "./policies";
 
+/** Family of boards (Pilot H743, CoPilot Nano, …). Variants hang off this. */
+export const productLines = pgTable(
+  "product_lines",
+  {
+    ...auditColumns(),
+    name: text().notNull().unique(),
+    description: text(),
+    active: boolean().notNull().default(true),
+  },
+  () => rolePolicies("product_lines"),
+);
+
+/**
+ * Shared component identity. BOM lines reference this so the same MPN is not
+ * duplicated across Pilot and CoPilot BOMs.
+ */
+export const parts = pgTable(
+  "parts",
+  {
+    ...auditColumns(),
+    mpn: text().notNull(),
+    manufacturer: text(),
+    description: text(),
+    defaultSourcing: bomSourcing().notNull().default("distributor"),
+  },
+  (t) => [
+    uniqueIndex("parts_mpn_lower").on(sql`lower(${t.mpn})`),
+    index().on(t.manufacturer),
+    ...rolePolicies("parts"),
+  ],
+);
+
+/**
+ * A sellable / buildable variant under a product line (e.g. Pilot H743 · Standard).
+ * Quotes, cost runs and BOM versions still FK here.
+ */
 export const products = pgTable(
   "products",
   {
     ...auditColumns(),
+    productLineId: uuid()
+      .notNull()
+      .references(() => productLines.id, { onDelete: "restrict" }),
+    // Unique display name used in UI and quote text (e.g. "Pilot H743").
     name: text().notNull().unique(),
+    // Label within the line (Standard, Alt IMU, …).
+    variantLabel: text().notNull().default("Standard"),
     sku: text().unique(),
     pricingMode: pricingMode().notNull(),
     active: boolean().notNull().default(true),
   },
-  () => rolePolicies("products"),
+  (t) => [
+    unique().on(t.productLineId, t.variantLabel),
+    index().on(t.productLineId),
+    ...rolePolicies("products"),
+  ],
 );
 
-/** Volume price list; only used for list_price products. */
+/** Volume price list; only used for list_price variants. */
 export const listPrices = pgTable(
   "list_prices",
   {
@@ -59,7 +105,7 @@ export const bomVersions = pgTable(
   },
   (t) => [
     unique().on(t.productId, t.version),
-    // One current BOM version per product.
+    // One current BOM version per variant.
     uniqueIndex("bom_versions_one_current_per_product")
       .on(t.productId)
       .where(sql`${t.isCurrent}`),
@@ -74,12 +120,13 @@ export const bomLines = pgTable(
     bomVersionId: uuid()
       .notNull()
       .references(() => bomVersions.id, { onDelete: "cascade" }),
-    mpn: text().notNull(),
-    manufacturer: text(),
-    description: text(),
+    partId: uuid()
+      .notNull()
+      .references(() => parts.id, { onDelete: "restrict" }),
     qtyPerBoard: integer().notNull(),
     designators: text(),
     sourcing: bomSourcing().notNull().default("distributor"),
+    // Alternate MPNs as text; resolved to parts when priced.
     alternates: text()
       .array()
       .notNull()
@@ -87,7 +134,7 @@ export const bomLines = pgTable(
   },
   (t) => [
     index().on(t.bomVersionId),
-    index().on(t.mpn),
+    index().on(t.partId),
     check("bom_lines_qty_per_board_positive", sql`${t.qtyPerBoard} > 0`),
     ...rolePolicies("bom_lines"),
   ],
