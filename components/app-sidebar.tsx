@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,17 +16,46 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NAV_ITEMS } from "@/lib/navigation";
+import { NAV_ITEMS, type NavItem } from "@/lib/navigation";
 
-/** Main navigation; `footer` shows the signed-in user above the sign-out button. */
-export function AppSidebar({ footer }: { footer: React.ReactNode }) {
+/** Whether this nav href matches the current path (exact for home, prefix otherwise). */
+function pathIsActive(pathname: string, href: string) {
+  return href === "/"
+    ? pathname === "/"
+    : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Nav button with Links always present; active styling waits on pathname. */
+function NavLinkButton({
+  item,
+  isActive = false,
+}: {
+  item: NavItem;
+  isActive?: boolean;
+}) {
+  return (
+    <SidebarMenuButton
+      isActive={isActive}
+      tooltip={item.title}
+      render={<Link href={item.href} />}
+    >
+      <item.icon />
+      <span>{item.title}</span>
+    </SidebarMenuButton>
+  );
+}
+
+/** Reads the pathname so only this leaf suspends on dynamic routes. */
+function ActiveNavLinkButton({ item }: { item: NavItem }) {
   const pathname = usePathname();
+  return <NavLinkButton item={item} isActive={pathIsActive(pathname, item.href)} />;
+}
 
-  const isActive = (href: string) =>
-    href === "/"
-      ? pathname === "/"
-      : pathname === href || pathname.startsWith(`${href}/`);
-
+/**
+ * Main navigation. Links stay in the static shell (and in the Suspense
+ * fallback) so clicks never disappear while pathname resolves.
+ */
+export function AppSidebar({ footer }: { footer: React.ReactNode }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -39,14 +69,9 @@ export function AppSidebar({ footer }: { footer: React.ReactNode }) {
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    isActive={isActive(item.href)}
-                    tooltip={item.title}
-                    render={<Link href={item.href} />}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
+                  <Suspense fallback={<NavLinkButton item={item} />}>
+                    <ActiveNavLinkButton item={item} />
+                  </Suspense>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
