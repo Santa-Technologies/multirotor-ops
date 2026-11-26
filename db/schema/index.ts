@@ -6,4 +6,5 @@ export * from "./inventory";
 export * from "./products";
 export * from "./quotes";
 export * from "./requests";
+export * from "./rfq";
 export * from "./users";

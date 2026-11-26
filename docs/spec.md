@@ -149,6 +149,9 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 - Supplier registry; deduped RFQ per part; Resend outbound; inbound thread matching.
 - LLM extract → human confirm → write offer.
+- Tables: `suppliers`, `part_suppliers`, `rfq_threads`, `rfq_offers`.
+- UI `/rfq`; webhook `POST /api/webhooks/resend` (Svix-verified).
+- OpenAI Responses API parses supplier PDFs only; confirm writes `manual_quotes`.
 
 **Done when:** A missing-price part produces one email, and a confirmed PDF offer updates the part without a second ask for another BOM using the same part.
 
@@ -192,4 +195,4 @@ Decided 24–26 Nov 2026:
 - Pipedrive: one-way import of contacts and deals; write-back waits for customer-facing quotes.
 - API pricing: Octopart/Nexar first.
 - Inventory and assembly timelines are in near-term scope (ahead of customer-facing quote send).
-- Inbound RFQ mailbox: Resend Inbound or equivalent; exact provider verified in phase 7.
+- Inbound RFQ mailbox: Resend Inbound (`email.received` webhook + subject token). LLM: OpenAI Responses API on supplier PDFs only.

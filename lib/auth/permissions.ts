@@ -39,6 +39,11 @@ export const WRITE_RULES = {
   part_inventory: all("supply"),
   finished_goods: all("supply"),
   assembly_lots: all("supply"),
+  // Supply owns the RFQ mailbox and confirm flow; engineering may open threads.
+  suppliers: all("supply"),
+  part_suppliers: all("supply"),
+  rfq_threads: { insert: ["supply", "engineering"], update: ["supply"], delete: ["supply"] },
+  rfq_offers: all("supply"),
   // Engineering refreshes cost after BOM/manual price changes; cron will use admin.
   cost_runs: all("engineering"),
   quote_settings: all(),

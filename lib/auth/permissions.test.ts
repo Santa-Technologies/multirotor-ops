@@ -38,6 +38,11 @@ describe("canWrite", () => {
     expect(canWrite("supply", "finished_goods", "insert")).toBe(true);
     expect(canWrite("supply", "assembly_lots", "delete")).toBe(true);
     expect(canWrite("sales", "assembly_lots", "insert")).toBe(false);
+    expect(canWrite("supply", "suppliers", "insert")).toBe(true);
+    expect(canWrite("supply", "rfq_offers", "update")).toBe(true);
+    expect(canWrite("engineering", "rfq_threads", "insert")).toBe(true);
+    expect(canWrite("engineering", "rfq_offers", "update")).toBe(false);
+    expect(canWrite("sales", "rfq_threads", "insert")).toBe(false);
   });
 
   it("lets admin write every table", () => {

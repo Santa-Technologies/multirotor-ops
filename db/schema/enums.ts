@@ -68,3 +68,21 @@ export const assemblyLotStatus = pgEnum("assembly_lot_status", [
   "completed",
   "cancelled",
 ]);
+
+/** Outbound RFQ email / reply lifecycle (one open thread per part). */
+export const rfqThreadStatus = pgEnum("rfq_thread_status", [
+  "draft",
+  "sent",
+  "awaiting_reply",
+  "offer_received",
+  "confirmed",
+  "closed",
+  "cancelled",
+]);
+
+/** Parsed supplier offer waiting for human confirm before write. */
+export const rfqOfferStatus = pgEnum("rfq_offer_status", [
+  "pending_confirm",
+  "confirmed",
+  "rejected",
+]);

@@ -5,6 +5,7 @@ import {
   Euro,
   Inbox,
   LayoutDashboard,
+  Mail,
   Settings,
   Users,
   Warehouse,
@@ -25,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { title: "Parts", href: "/parts", icon: Component },
   { title: "Inventory", href: "/inventory", icon: Warehouse },
   { title: "Costs", href: "/costs", icon: Euro },
+  { title: "Supplier RFQ", href: "/rfq", icon: Mail },
   { title: "Quotes", href: "/quotes", icon: Calculator },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

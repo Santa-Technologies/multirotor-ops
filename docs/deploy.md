@@ -56,8 +56,11 @@ A successful run ends with `[✓] migrations applied successfully!`. drizzle-kit
 | `0005_phase3_parts_product_lines`    | `parts`, `product_lines`; products as variants; BOM lines → `part_id`; Kern → CoPilot rename; audit triggers  |
 | `0006_phase4_cost_runs_engineering_rls` | Lets engineering insert/update/delete `cost_runs` (alongside admin)                                    |
 | `0007_phase5_inventory_assembly`         | `part_inventory`, `finished_goods`, `assembly_lots`; supply RLS; audit triggers                        |
+| `0008_phase7_supplier_rfq`               | `suppliers`, `part_suppliers`, `rfq_threads`, `rfq_offers`; supply RLS; audit triggers                 |
 
-After phase 5, Supabase → **Table Editor** shows 22 tables. Tables, roles and open values: [data model](data-model.md). Never change the schema in the Supabase dashboard; change `db/schema/`, run `npm run db:generate`, and commit the migration.
+After phase 7, Supabase → **Table Editor** shows 26 tables. Tables, roles and open values: [data model](data-model.md). Never change the schema in the Supabase dashboard; change `db/schema/`, run `npm run db:generate`, and commit the migration.
+
+**Resend inbound (phase 7):** create a receiving address on your domain, point a webhook at `https://<production>/api/webhooks/resend` for `email.received`, and set `RESEND_WEBHOOK_SECRET` to the signing secret. RFQ subjects include `[RFQ-XXXXXX]` for matching.
 
 ## 4. Vercel project
 
@@ -73,6 +76,11 @@ After phase 5, Supabase → **Table Editor** shows 22 tables. Tables, roles and 
    | `CRON_SECRET`                          | Long random string; Vercel Cron sends `Authorization: Bearer …`  | **Yes**                       |
    | `NEXAR_CLIENT_ID`                      | Nexar application client id (`portal.nexar.com`)                 | Treat as private              |
    | `NEXAR_CLIENT_SECRET`                  | Nexar application secret; scope `supply.domain`                  | **Yes**                       |
+   | `RESEND_API_KEY`                       | Resend API key (outbound RFQ + inbound attachment download)      | **Yes**                       |
+   | `RESEND_FROM_EMAIL`                    | Verified-domain From address for RFQs                            | Treat as private              |
+   | `RESEND_RFQ_REPLY_TO`                  | Optional inbound address (defaults to FROM)                      | Treat as private              |
+   | `RESEND_WEBHOOK_SECRET`                | Resend webhook signing secret for `/api/webhooks/resend`         | **Yes**                       |
+   | `OPENAI_API_KEY`                       | Supplier PDF extract only                                        | **Yes**                       |
 
    `NEXT_PUBLIC_*` values are inlined at build time, and Vercel applies env changes only to new deployments. Redeploy after changing any variable. Cost refresh still works without Nexar (manual quotes only); set both Nexar vars when credentials are ready.
 
