@@ -34,6 +34,10 @@ describe("canWrite", () => {
     expect(canWrite("sales", "quote_settings", "update")).toBe(false);
     expect(canWrite("engineering", "cost_runs", "insert")).toBe(true);
     expect(canWrite("sales", "cost_runs", "insert")).toBe(false);
+    expect(canWrite("supply", "part_inventory", "update")).toBe(true);
+    expect(canWrite("supply", "finished_goods", "insert")).toBe(true);
+    expect(canWrite("supply", "assembly_lots", "delete")).toBe(true);
+    expect(canWrite("sales", "assembly_lots", "insert")).toBe(false);
   });
 
   it("lets admin write every table", () => {

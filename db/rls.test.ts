@@ -82,7 +82,7 @@ describe.skipIf(!url)("database: migrations, seed, RLS and activity log", () => 
     ]);
     const [{ count }] =
       await sql`select count(*)::int as count from drizzle.__drizzle_migrations`;
-    expect(count).toBe(7);
+    expect(count).toBe(8);
 
     await sql`delete from public.users where id = ${JUSTUS}`;
     await sql`delete from public.users where id = ${SALES}`;
