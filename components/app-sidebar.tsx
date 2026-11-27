@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { LogOut } from "lucide-react";
+import { Loader2Icon, LogOut } from "lucide-react";
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
@@ -31,6 +32,20 @@ function navLinkId(href: string) {
   return `nav-link-${href === "/" ? "home" : href.replace(/^\//, "").replace(/\//g, "-")}`;
 }
 
+/** Inline pending hint for a Link — must be a descendant of that Link. */
+function NavPendingHint() {
+  const { pending } = useLinkStatus();
+  return (
+    <Loader2Icon
+      aria-hidden
+      className={cn(
+        "ml-auto size-3.5 shrink-0 animate-spin opacity-0 transition-opacity",
+        pending && "opacity-100",
+      )}
+    />
+  );
+}
+
 /**
  * Plain Next.js Link styled as a sidebar button. Stays mounted across navigations;
  * active styling is applied by ActiveNavSynchronizer via data-active.
@@ -47,6 +62,7 @@ function NavItemLink({ item }: { item: NavItem }) {
     >
       <item.icon />
       <span>{item.title}</span>
+      <NavPendingHint />
     </Link>
   );
 }

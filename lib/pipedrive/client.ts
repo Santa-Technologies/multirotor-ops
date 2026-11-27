@@ -51,6 +51,7 @@ export type PipedriveStage = {
   name?: string | null;
   pipeline_id?: number | null;
   order_nr?: number | null;
+  is_deleted?: boolean | null;
 };
 
 function apiToken(): string {
@@ -117,6 +118,37 @@ export async function listPipelines() {
   return listAllPipedrive<PipedrivePipeline>("/pipelines");
 }
 
-export async function listStages() {
-  return listAllPipedrive<PipedriveStage>("/stages");
+/**
+ * Stages for one pipeline (Pipedrive order). Prefer this over a global list so
+ * every pipeline is explicitly covered even when the unfiltered endpoint is sparse.
+ */
+export async function listStagesForPipeline(pipelineId: number) {
+  const stages = await listAllPipedrive<PipedriveStage>("/stages", {
+    pipeline_id: String(pipelineId),
+    sort_by: "order_nr",
+  });
+  return stages.filter((s) => !s.is_deleted);
+}
+
+/**
+ * Stages for every pipeline. Fetches per pipeline so columns stay complete even
+ * when a company has multiple pipelines. Pass `pipelines` when the caller
+ * already loaded them to avoid a second /pipelines round-trip.
+ */
+export async function listStages(pipelines?: PipedrivePipeline[]) {
+  const pipes = pipelines ?? (await listPipelines());
+  if (pipes.length === 0) {
+    const stages = await listAllPipedrive<PipedriveStage>("/stages", {
+      sort_by: "order_nr",
+    });
+    return stages.filter((s) => !s.is_deleted);
+  }
+  const perPipeline = await Promise.all(
+    pipes.filter((p) => p.id != null).map((p) => listStagesForPipeline(p.id)),
+  );
+  const byId = new Map<number, PipedriveStage>();
+  for (const stage of perPipeline.flat()) {
+    if (stage.id != null) byId.set(stage.id, stage);
+  }
+  return [...byId.values()];
 }

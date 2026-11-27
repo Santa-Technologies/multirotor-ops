@@ -54,13 +54,14 @@ function dealStatus(
  * open deals → pipedrive_deals. Never writes back to Pipedrive.
  */
 export async function syncPipedrive(actorId: string): Promise<PipedriveSyncResult> {
-  const [orgs, persons, deals, pipelines, stages] = await Promise.all([
+  const [orgs, persons, deals, pipelines] = await Promise.all([
     listOrganizations(),
     listPersons(),
     listOpenDeals(),
     listPipelines(),
-    listStages(),
   ]);
+  // Per-pipeline stage fetch (uses pipelines already loaded above).
+  const stages = await listStages(pipelines);
 
   const pipelineName = new Map(pipelines.map((p) => [p.id, p.name ?? null]));
   const stageName = new Map(stages.map((s) => [s.id, s.name ?? null]));
@@ -141,7 +142,11 @@ export async function syncPipedrive(actorId: string): Promise<PipedriveSyncResul
       personCount++;
     }
 
-    const stageCount = await upsertStages(tx, stages);
+    let stageCount = await upsertStages(tx, stages);
+
+    // Backfill stage rows from open deals so kanban columns exist even when the
+    // stages endpoint omitted a pipeline or a stage was renamed after sync.
+    stageCount += await backfillStagesFromDeals(tx, deals, stageName);
 
     let dealCount = 0;
     const now = new Date();
@@ -153,12 +158,17 @@ export async function syncPipedrive(actorId: string): Promise<PipedriveSyncResul
       const contactId =
         personPd != null ? (personLocalId.get(personPd) ?? null) : null;
 
+      const resolvedStageName =
+        deal.stage_id != null
+          ? (stageName.get(deal.stage_id) ?? null)
+          : null;
+
       await upsertDeal(tx, {
         deal,
         companyId,
         contactId,
         pipelineName: deal.pipeline_id != null ? pipelineName.get(deal.pipeline_id) ?? null : null,
-        stageName: deal.stage_id != null ? stageName.get(deal.stage_id) ?? null : null,
+        stageName: resolvedStageName,
         syncedAt: now,
       });
       dealCount++;
@@ -180,34 +190,93 @@ async function upsertStages(
 ): Promise<number> {
   let n = 0;
   for (const stage of stages) {
-    if (!stage.id || stage.pipeline_id == null || !stage.name?.trim()) continue;
+    if (
+      !stage.id ||
+      stage.pipeline_id == null ||
+      !stage.name?.trim() ||
+      stage.is_deleted
+    ) {
+      continue;
+    }
+    n += await upsertStageRow(tx, {
+      pipelineId: stage.pipeline_id,
+      stageId: stage.id,
+      name: stage.name.trim(),
+      orderNr: stage.order_nr ?? 0,
+    });
+  }
+  return n;
+}
+
+/**
+ * Ensures every open deal's stage_id has a pipedrive_stages row for its pipeline.
+ * Uses the stages name map when available; otherwise a placeholder name.
+ */
+async function backfillStagesFromDeals(
+  tx: Parameters<Parameters<typeof withActor>[1]>[0],
+  deals: PipedriveDeal[],
+  stageNameById: Map<number, string | null>,
+): Promise<number> {
+  const seen = new Set<string>();
+  let n = 0;
+  for (const deal of deals) {
+    if (deal.stage_id == null || deal.pipeline_id == null) continue;
+    const key = `${deal.pipeline_id}:${deal.stage_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
     const [existing] = await tx
       .select({ id: pipedriveStages.id })
       .from(pipedriveStages)
       .where(
         and(
-          eq(pipedriveStages.pipelineId, stage.pipeline_id),
-          eq(pipedriveStages.stageId, stage.id),
+          eq(pipedriveStages.pipelineId, deal.pipeline_id),
+          eq(pipedriveStages.stageId, deal.stage_id),
         ),
       )
       .limit(1);
-    const values = {
-      pipelineId: stage.pipeline_id,
-      stageId: stage.id,
-      name: stage.name.trim(),
-      orderNr: stage.order_nr ?? 0,
-    };
-    if (existing) {
-      await tx
-        .update(pipedriveStages)
-        .set(values)
-        .where(eq(pipedriveStages.id, existing.id));
-    } else {
-      await tx.insert(pipedriveStages).values(values);
-    }
-    n++;
+    if (existing) continue;
+
+    const name =
+      stageNameById.get(deal.stage_id)?.trim() || `Stage ${deal.stage_id}`;
+    n += await upsertStageRow(tx, {
+      pipelineId: deal.pipeline_id,
+      stageId: deal.stage_id,
+      name,
+      orderNr: deal.stage_id,
+    });
   }
   return n;
+}
+
+async function upsertStageRow(
+  tx: Parameters<Parameters<typeof withActor>[1]>[0],
+  values: {
+    pipelineId: number;
+    stageId: number;
+    name: string;
+    orderNr: number;
+  },
+): Promise<number> {
+  const [existing] = await tx
+    .select({ id: pipedriveStages.id })
+    .from(pipedriveStages)
+    .where(
+      and(
+        eq(pipedriveStages.pipelineId, values.pipelineId),
+        eq(pipedriveStages.stageId, values.stageId),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    await tx
+      .update(pipedriveStages)
+      .set(values)
+      .where(eq(pipedriveStages.id, existing.id));
+  } else {
+    await tx.insert(pipedriveStages).values(values);
+  }
+  return 1;
 }
 
 async function upsertDeal(
