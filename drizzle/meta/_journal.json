@@ -64,6 +64,13 @@
       "when": 1795678551539,
       "tag": "0008_phase7_supplier_rfq",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795701867292,
+      "tag": "0009_phase8_requests_pipedrive",
+      "breakpoints": true
     }
   ]
 }

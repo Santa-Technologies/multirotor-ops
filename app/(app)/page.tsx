@@ -7,6 +7,12 @@ import { costRuns, products, quotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth/current-user";
 import { formatEuroCents, formatPct } from "@/lib/format/money";
 import { getInventoryDashboardSnapshot } from "@/lib/inventory/queries";
+import {
+  countOpenDeals,
+  countOpenRequests,
+  listOpenPipedriveDeals,
+  listOpenRequests,
+} from "@/lib/requests/queries";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -17,49 +23,82 @@ function formatDate(iso: string | null) {
 }
 
 export default async function DashboardPage() {
-  await requireUser();
+  const user = await requireUser();
   const db = getDb();
   const inventory = await getInventoryDashboardSnapshot();
 
-  const [latestPilotCost] = await db
-    .select({
-      runAt: costRuns.runAt,
-      coveragePct: costRuns.coveragePct,
-      tiers: costRuns.tiers,
-      productName: products.name,
-    })
-    .from(costRuns)
-    .innerJoin(products, eq(products.id, costRuns.productId))
-    .where(eq(products.name, "Pilot H743"))
-    .orderBy(desc(costRuns.runAt))
-    .limit(1);
+  const [
+    latestPilotCost,
+    draftQuotes,
+    openRequestCount,
+    openDealCount,
+    openRequests,
+    openDeals,
+  ] = await Promise.all([
+    db
+      .select({
+        runAt: costRuns.runAt,
+        coveragePct: costRuns.coveragePct,
+        tiers: costRuns.tiers,
+        flags: costRuns.flags,
+        productName: products.name,
+      })
+      .from(costRuns)
+      .innerJoin(products, eq(products.id, costRuns.productId))
+      .where(eq(products.name, "Pilot H743"))
+      .orderBy(desc(costRuns.runAt))
+      .limit(1)
+      .then((rows) => rows[0] ?? null),
+    db
+      .select({
+        id: quotes.id,
+        number: quotes.number,
+        quantity: quotes.quantity,
+        productName: products.name,
+        outputs: quotes.outputs,
+      })
+      .from(quotes)
+      .innerJoin(products, eq(products.id, quotes.productId))
+      .where(eq(quotes.status, "draft"))
+      .orderBy(desc(quotes.createdAt))
+      .limit(5),
+    countOpenRequests(),
+    countOpenDeals(),
+    listOpenRequests(user.role === "engineering" ? user.id : undefined),
+    listOpenPipedriveDeals(8),
+  ]);
 
-  const draftQuotes = await db
-    .select({
-      id: quotes.id,
-      number: quotes.number,
-      quantity: quotes.quantity,
-      productName: products.name,
-      outputs: quotes.outputs,
-    })
-    .from(quotes)
-    .innerJoin(products, eq(products.id, quotes.productId))
-    .where(eq(quotes.status, "draft"))
-    .orderBy(desc(quotes.createdAt))
-    .limit(5);
+  // Engineering sees their owned open work; others see the full open list (capped).
+  const requestRows =
+    user.role === "engineering" ? openRequests : openRequests.slice(0, 8);
 
   const tier1000 = latestPilotCost?.tiers["1000"];
+  const costFlags = Array.isArray(latestPilotCost?.flags)
+    ? latestPilotCost.flags.length
+    : 0;
+  const coverage = latestPilotCost ? Number(latestPilotCost.coveragePct) : null;
 
   return (
     <section className="flex flex-col gap-10">
       <div>
         <h1 className="text-xl font-semibold">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Weekly ops snapshot: stock, assembly timeline, cost freshness and open drafts.
+          Weekly ops snapshot: Marc&apos;s open work, deals, stock, cost freshness and
+          drafts.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <Stat
+          label="Open requests"
+          value={openRequestCount.toLocaleString("de-DE")}
+          hint={user.role === "engineering" ? "Yours listed below" : "All open"}
+        />
+        <Stat
+          label="Open deals"
+          value={openDealCount.toLocaleString("de-DE")}
+          hint="Mirrored from Pipedrive"
+        />
         <Stat
           label="Finished goods"
           value={inventory.finishedGoodsTotal.toLocaleString("de-DE")}
@@ -80,10 +119,87 @@ export default async function DashboardPage() {
           value={tier1000 ? formatEuroCents(tier1000.totalCents) : "—"}
           hint={
             latestPilotCost
-              ? `${latestPilotCost.runAt.toLocaleDateString("de-DE")} · ${formatPct(Number(latestPilotCost.coveragePct))} coverage`
+              ? `${latestPilotCost.runAt.toLocaleDateString("de-DE")} · ${formatPct(Number(latestPilotCost.coveragePct))} · ${costFlags} flag(s)`
               : "No cost run yet"
           }
         />
+      </div>
+
+      {coverage != null && coverage < 90 ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Pilot cost coverage is {formatPct(coverage)} (below 90%). Check{" "}
+          <Link href="/costs" className="underline-offset-4 hover:underline">
+            Costs
+          </Link>{" "}
+          or open an RFQ for missing parts.
+        </p>
+      ) : null}
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium">
+              {user.role === "engineering" ? "Your open requests" : "Open requests"}
+            </h2>
+            <Link href="/requests" className="text-xs underline-offset-4 hover:underline">
+              Requests
+            </Link>
+          </div>
+          {requestRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No open requests.</p>
+          ) : (
+            <ul className="divide-y rounded-lg border text-sm">
+              {requestRows.map(({ request, companyName, productName }) => (
+                <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-3">
+                  <span>
+                    <span className="font-medium">{request.summary}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {companyName}
+                      {productName ? ` · ${productName}` : ""}
+                    </span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {request.status.replaceAll("_", " ")} · due{" "}
+                    {formatDate(request.dueDate)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium">Open deals</h2>
+            <Link href="/customers" className="text-xs underline-offset-4 hover:underline">
+              Customers
+            </Link>
+          </div>
+          {openDeals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No mirrored deals. Sync Pipedrive from Customers when ready.
+            </p>
+          ) : (
+            <ul className="divide-y rounded-lg border text-sm">
+              {openDeals.map(({ deal, companyName }) => (
+                <li key={deal.id} className="flex flex-wrap justify-between gap-2 px-4 py-3">
+                  <span>
+                    <span className="font-medium">{deal.title}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {companyName ?? "—"}
+                    </span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {[deal.pipelineName, deal.stageName].filter(Boolean).join(" · ") ||
+                      "open"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">

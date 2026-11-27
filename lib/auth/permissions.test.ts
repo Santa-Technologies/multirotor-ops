@@ -43,6 +43,8 @@ describe("canWrite", () => {
     expect(canWrite("engineering", "rfq_threads", "insert")).toBe(true);
     expect(canWrite("engineering", "rfq_offers", "update")).toBe(false);
     expect(canWrite("sales", "rfq_threads", "insert")).toBe(false);
+    expect(canWrite("sales", "pipedrive_deals", "insert")).toBe(true);
+    expect(canWrite("engineering", "pipedrive_deals", "insert")).toBe(false);
   });
 
   it("lets admin write every table", () => {

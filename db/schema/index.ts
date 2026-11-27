@@ -3,6 +3,7 @@ export * from "./costs";
 export * from "./customers";
 export * from "./enums";
 export * from "./inventory";
+export * from "./pipedrive";
 export * from "./products";
 export * from "./quotes";
 export * from "./requests";

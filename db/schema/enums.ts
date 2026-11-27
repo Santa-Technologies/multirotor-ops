@@ -86,3 +86,11 @@ export const rfqOfferStatus = pgEnum("rfq_offer_status", [
   "confirmed",
   "rejected",
 ]);
+
+/** Pipedrive deal status (one-way import; we do not write stages back yet). */
+export const pipedriveDealStatus = pgEnum("pipedrive_deal_status", [
+  "open",
+  "won",
+  "lost",
+  "deleted",
+]);
