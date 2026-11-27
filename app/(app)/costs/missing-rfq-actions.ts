@@ -36,6 +36,22 @@ export async function setDistributorRfqEmailAction(
     return { status: "error", message: "Distributor and email are required." };
   }
 
+  const addressLine = field(formData, "address_line");
+  const city = field(formData, "city");
+  const postalCode = field(formData, "postal_code");
+  const country = field(formData, "country");
+  // Only touch address columns when the operator typed something — avoid wiping
+  // an existing postal address from the quick “set email” dialog.
+  const addressPatch =
+    addressLine || city || postalCode || country
+      ? {
+          addressLine: addressLine || null,
+          city: city || null,
+          postalCode: postalCode || null,
+          country: country || null,
+        }
+      : {};
+
   try {
     await withActor(user.id, async (tx) => {
       await tx
@@ -43,6 +59,7 @@ export async function setDistributorRfqEmailAction(
         .set({
           rfqEmail: email,
           rfqContactName: field(formData, "rfq_contact_name") || null,
+          ...addressPatch,
         })
         .where(eq(distributors.id, id));
     });

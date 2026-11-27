@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
+import { bomVersionIsDeletable } from "@/lib/bom/delete-bom";
 import { getVariantDetail } from "@/lib/products/queries";
 
 import { BomImportForm } from "../bom-import-form";
+import { DeleteBomButton } from "../delete-bom-button";
 
 type Props = { params: Promise<{ productId: string }> };
 
@@ -23,7 +25,11 @@ export default async function ProductVariantPage({ params }: Props) {
   if (!detail) notFound();
 
   const canImport = canWrite(user.role, "bom_versions", "insert");
+  const canDelete = canWrite(user.role, "bom_versions", "delete");
   const { product, line, currentBom, lines, versions } = detail;
+  const deletable = currentBom
+    ? await bomVersionIsDeletable(currentBom.id)
+    : false;
 
   return (
     <section className="flex flex-col gap-8">
@@ -86,11 +92,22 @@ export default async function ProductVariantPage({ params }: Props) {
             Versions: {versions.map((v) => v.version).join(", ")}
           </p>
         ) : null}
+        {canDelete && currentBom ? (
+          <DeleteBomButton
+            bomVersionId={currentBom.id}
+            versionLabel={currentBom.version}
+            deletable={deletable}
+          />
+        ) : null}
       </div>
 
       {canImport ? (
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-medium">Import BOM (CSV)</h2>
+          <p className="text-xs text-muted-foreground">
+            After deleting a BOM you can re-upload the same CSV (same version
+            name) so Link → manufacturer / distributor scanning runs again.
+          </p>
           <BomImportForm productId={product.id} />
         </div>
       ) : null}

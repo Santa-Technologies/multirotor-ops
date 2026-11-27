@@ -55,8 +55,26 @@ export function SetDistributorEmailForm({
         <Label htmlFor={`contact-${distributorId}`}>Contact name</Label>
         <Input id={`contact-${distributorId}`} name="rfq_contact_name" />
       </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`address-${distributorId}`}>Address</Label>
+        <Input id={`address-${distributorId}`} name="address_line" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`city-${distributorId}`}>City</Label>
+          <Input id={`city-${distributorId}`} name="city" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`postal-${distributorId}`}>Postal code</Label>
+          <Input id={`postal-${distributorId}`} name="postal_code" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`country-${distributorId}`}>Country</Label>
+          <Input id={`country-${distributorId}`} name="country" placeholder="DE" />
+        </div>
+      </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save email"}
+        {pending ? "Saving…" : "Save contact"}
       </Button>
       <Status state={state} />
     </form>
