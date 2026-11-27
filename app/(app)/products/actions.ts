@@ -7,8 +7,13 @@ import { productLines, products } from "@/db/schema";
 import { withActor } from "@/db/with-actor";
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
+import { deleteBom } from "@/lib/bom/delete-bom";
 import { importBom } from "@/lib/bom/import-bom";
 import { parseBomCsv, suggestBomMapping, type BomColumnKey } from "@/lib/bom/parse-csv";
+import {
+  bomVersionAlreadyExistsMessage,
+  isBomVersionUniqueViolation,
+} from "@/lib/bom/version-conflict";
 
 export type ActionState = {
   status: "idle" | "error" | "ok";
@@ -107,6 +112,40 @@ const MAPPING_KEYS: BomColumnKey[] = [
   "alternates",
 ];
 
+/** Deletes one BOM version so the same CSV can be re-imported for that product. */
+export async function deleteBomAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  if (!canWrite(user.role, "bom_versions", "delete")) {
+    return { status: "error", message: "You cannot delete BOMs." };
+  }
+
+  const bomVersionId = field(formData, "bom_version_id");
+  if (!bomVersionId) {
+    return { status: "error", message: "BOM version is required." };
+  }
+
+  try {
+    const result = await deleteBom({ bomVersionId, actorId: user.id });
+    revalidatePath("/products");
+    revalidatePath(`/products/${result.productId}`);
+    revalidatePath("/parts");
+    return {
+      status: "ok",
+      message: `Deleted BOM ${result.version} (${result.linesRemoved} lines${
+        result.orphansRemoved > 0
+          ? `, ${result.orphansRemoved} unused parts removed`
+          : ""
+      }). You can import the same CSV again.`,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Delete failed.";
+    return { status: "error", message };
+  }
+}
+
 /** Imports a CSV BOM for a variant, upserting shared parts. */
 export async function importBomAction(
   _prev: ActionState,
@@ -178,14 +217,22 @@ export async function importBomAction(
     revalidatePath("/parts");
     return {
       status: "ok",
-      message: `Imported ${result.lineCount} lines into BOM ${version}.`,
+      message: result.replaced
+        ? `Replaced BOM ${version} with ${result.lineCount} lines.`
+        : `Imported ${result.lineCount} lines into BOM ${version}.`,
       issues:
         parsed.issues.length > 0
           ? parsed.issues.map((i) => `Row ${i.row}: ${i.message}`)
           : undefined,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Import failed.";
+    if (isBomVersionUniqueViolation(error)) {
+      return { status: "error", message: bomVersionAlreadyExistsMessage(version) };
+    }
+    const message =
+      error instanceof Error && !error.message.startsWith("Failed query:")
+        ? error.message
+        : "Import failed.";
     return { status: "error", message };
   }
 }

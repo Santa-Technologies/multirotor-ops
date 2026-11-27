@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
+import { bomVersionIsDeletable } from "@/lib/bom/delete-bom";
 import { getVariantDetail } from "@/lib/products/queries";
 
 import { BomImportForm } from "../bom-import-form";
+import { DeleteBomButton } from "../delete-bom-button";
 
 type Props = { params: Promise<{ productId: string }> };
 
@@ -23,7 +25,11 @@ export default async function ProductVariantPage({ params }: Props) {
   if (!detail) notFound();
 
   const canImport = canWrite(user.role, "bom_versions", "insert");
+  const canDelete = canWrite(user.role, "bom_versions", "delete");
   const { product, line, currentBom, lines, versions } = detail;
+  const deletable = currentBom
+    ? await bomVersionIsDeletable(currentBom.id)
+    : false;
 
   return (
     <section className="flex flex-col gap-8">
@@ -54,7 +60,11 @@ export default async function ProductVariantPage({ params }: Props) {
           ) : null}
         </h2>
         {!currentBom || lines.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No BOM imported yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {currentBom
+              ? `BOM version ${currentBom.version} has no lines. Re-import or delete it.`
+              : "No BOM imported yet."}
+          </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[40rem] text-left text-sm">
@@ -86,11 +96,22 @@ export default async function ProductVariantPage({ params }: Props) {
             Versions: {versions.map((v) => v.version).join(", ")}
           </p>
         ) : null}
+        {canDelete && currentBom ? (
+          <DeleteBomButton
+            bomVersionId={currentBom.id}
+            versionLabel={currentBom.version}
+            deletable={deletable}
+          />
+        ) : null}
       </div>
 
       {canImport ? (
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-medium">Import BOM (CSV)</h2>
+          <p className="text-xs text-muted-foreground">
+            Re-importing the same version label replaces that BOM when it has no
+            cost runs. Shared parts stay.
+          </p>
           <BomImportForm productId={product.id} />
         </div>
       ) : null}
