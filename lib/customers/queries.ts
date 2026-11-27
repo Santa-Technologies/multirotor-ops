@@ -31,11 +31,46 @@ export async function listOpenDealPipelines() {
 /** Stages for a pipeline ordered by Pipedrive order_nr. */
 export async function listStagesForPipeline(pipelineId: number) {
   const db = getDb();
-  return db
+  const stages = await db
     .select()
     .from(pipedriveStages)
     .where(eq(pipedriveStages.pipelineId, pipelineId))
     .orderBy(asc(pipedriveStages.orderNr), asc(pipedriveStages.name));
+
+  if (stages.length > 0) return stages;
+
+  // Fallback when stages were never synced: synthesise columns from open deals.
+  const fromDeals = await db
+    .select({
+      stageId: pipedriveDeals.stageId,
+      stageName: pipedriveDeals.stageName,
+    })
+    .from(pipedriveDeals)
+    .where(
+      and(
+        eq(pipedriveDeals.status, "open"),
+        eq(pipedriveDeals.pipelineId, pipelineId),
+        sql`${pipedriveDeals.stageId} is not null`,
+      ),
+    )
+    .orderBy(asc(pipedriveDeals.stageId));
+
+  const byId = new Map<number, string>();
+  for (const row of fromDeals) {
+    if (row.stageId == null || byId.has(row.stageId)) continue;
+    byId.set(row.stageId, row.stageName?.trim() || `Stage ${row.stageId}`);
+  }
+
+  return [...byId.entries()].map(([stageId, name], index) => ({
+    id: "00000000-0000-0000-0000-000000000000",
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    createdBy: null as string | null,
+    pipelineId,
+    stageId,
+    name,
+    orderNr: index,
+  }));
 }
 
 /** Open deals for a pipeline (kanban cards). */
