@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -15,8 +16,28 @@ import { pipedriveDealStatus } from "./enums";
 import { rolePolicies } from "./policies";
 
 /**
+ * Thin mirror of Pipedrive stages for kanban column order. Synced one-way;
+ * stages are never written back.
+ */
+export const pipedriveStages = pgTable(
+  "pipedrive_stages",
+  {
+    ...auditColumns(),
+    pipelineId: integer().notNull(),
+    stageId: integer().notNull(),
+    name: text().notNull(),
+    orderNr: integer().notNull().default(0),
+  },
+  (t) => [
+    unique().on(t.pipelineId, t.stageId),
+    index().on(t.pipelineId, t.orderNr),
+    ...rolePolicies("pipedrive_stages"),
+  ],
+);
+
+/**
  * One-way mirror of Pipedrive deals. Linked to local companies/contacts when
- * org/person pipedrive ids match. Never written back to Pipedrive in phase 8.
+ * org/person pipedrive ids match. Never written back to Pipedrive.
  */
 export const pipedriveDeals = pgTable(
   "pipedrive_deals",
@@ -43,6 +64,7 @@ export const pipedriveDeals = pgTable(
     index().on(t.status),
     index().on(t.companyId),
     index().on(t.pipelineId),
+    index().on(t.stageId),
     ...rolePolicies("pipedrive_deals"),
   ],
 );

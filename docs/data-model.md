@@ -44,6 +44,7 @@ Supply may write all three; everyone signed in may read.
 | 7     | **Done:** `suppliers`, `part_suppliers`, `rfq_threads` (subject token + Resend ids), `rfq_offers` (pending_confirm → confirmed writes `manual_quotes`) |
 | 8     | **Done:** `pipedrive_deals` (one-way mirror); `requests.pipedrive_deal_id` optional; companies/contacts keep `pipedrive_id`                       |
 | 9     | **Done (workflow):** quote PDF + approve + mark sent + Pipedrive note; revise creates new `version` (fields already present)                     |
+| UX / commercial | **Done:** `pipedrive_stages` (kanban order); `deal_id` uuid on requests/quotes; `sales_orders` / `sales_invoices` / `sales_documents` / `sales_shipments`; `distributors.rfq_email` / `host_key`; `parts.product_url` + `preferred_distributor_id`; `bom_lines.product_url` |
 
 ## Who may write what
 
@@ -51,13 +52,15 @@ Everyone signed in reads every table. Writes follow role; admin may write everyt
 
 | Tables                                                                       | Writers besides admin                                            |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| companies, contacts, quotes, pipedrive_deals                                 | sales                                                            |
+| companies, contacts, quotes, pipedrive_deals, pipedrive_stages, sales_orders, sales_invoices, sales_documents | sales |
+| sales_shipments                                                              | sales; supply (insert/update readiness)                          |
 | requests                                                                     | sales (insert, update, delete); engineering (update, for triage) |
 | requirements, product_lines, products, parts, list_prices, bom_versions, bom_lines | engineering                                                |
+| distributors                                                                 | supply + engineering (RFQ emails / BOM host upsert); delete supply |
 | manual_quotes, assembly_prices, part_inventory, finished_goods, assembly_lots | supply                                                          |
 | suppliers, part_suppliers, rfq_offers                                        | supply                                                           |
 | rfq_threads                                                                  | supply; engineering may insert (open RFQ)                        |
-| users, distributors, price_snapshots, quote_settings                         | admin only                                                       |
+| users, price_snapshots, quote_settings                                       | admin only                                                       |
 | cost_runs                                                                    | engineering (refresh after BOM / manual prices); admin           |
 | activity_log                                                                 | nobody; written only by triggers                                 |
 

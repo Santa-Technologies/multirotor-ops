@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { asc } from "drizzle-orm";
 
-import { getDb } from "@/db";
-import { parts } from "@/db/schema";
+import { PageHeaderActions } from "@/components/page-header-actions";
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
 import {
@@ -11,7 +9,7 @@ import {
   listPendingRfqOffers,
 } from "@/lib/rfq/queries";
 
-import { ConfirmOfferForm, CreateSupplierForm, SendRfqForm } from "./forms";
+import { ConfirmOfferForm, CreateSupplierDialog, SendRfqDialog } from "./forms";
 
 export const metadata: Metadata = { title: "Supplier RFQ" };
 
@@ -27,27 +25,24 @@ export default async function RfqPage() {
   const canSend = canWrite(user.role, "rfq_threads", "insert");
   const canConfirm = canWrite(user.role, "rfq_offers", "update");
 
-  const db = getDb();
-  const [supplierRows, openThreads, pendingOffers, partRows] = await Promise.all([
+  const [supplierRows, openThreads, pendingOffers] = await Promise.all([
     listActiveSuppliers(),
     listOpenRfqThreads(),
     listPendingRfqOffers(),
-    db
-      .select({ id: parts.id, mpn: parts.mpn })
-      .from(parts)
-      .orderBy(asc(parts.mpn))
-      .limit(500),
   ]);
 
   return (
     <section className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-xl font-semibold">Supplier RFQ</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Deduped price requests by part. Inbound PDF replies are parsed for review —
-          nothing is written to cost until you confirm.
-        </p>
-      </div>
+      <PageHeaderActions
+        title="Supplier RFQ"
+        description="Deduped price requests by part. Inbound PDF replies are parsed for review — nothing is written to cost until you confirm."
+        actions={
+          <>
+            {canSupply ? <CreateSupplierDialog /> : null}
+            {canSend ? <SendRfqDialog /> : null}
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Pending confirmations</h2>
@@ -124,13 +119,6 @@ export default async function RfqPage() {
         )}
       </div>
 
-      {canSend ? (
-        <SendRfqForm
-          parts={partRows}
-          suppliers={supplierRows.map((s) => ({ id: s.id, name: s.name }))}
-        />
-      ) : null}
-
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Suppliers</h2>
         {supplierRows.length === 0 ? (
@@ -148,7 +136,6 @@ export default async function RfqPage() {
             ))}
           </ul>
         )}
-        {canSupply ? <CreateSupplierForm /> : null}
       </div>
     </section>
   );

@@ -71,6 +71,13 @@
       "when": 1795701867292,
       "tag": "0009_phase8_requests_pipedrive",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795762572251,
+      "tag": "0010_bored_mockingbird",
+      "breakpoints": true
     }
   ]
 }

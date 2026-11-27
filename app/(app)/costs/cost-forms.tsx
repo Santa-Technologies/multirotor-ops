@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { ActionDialog } from "@/components/action-dialog";
+import { EntityPicker } from "@/components/entity-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,33 +27,22 @@ function Status({ state }: { state: CostActionState }) {
   return null;
 }
 
-/** Triggers a cost run for the selected cost-plus product. */
-export function RunCostForm({
-  products,
-}: {
-  products: Array<{ id: string; name: string }>;
-}) {
-  const [state, action, pending] = useActionState(runCostAction, initial);
-  if (products.length === 0) {
-    return <p className="text-sm text-muted-foreground">No cost-plus products yet.</p>;
-  }
+export function RunCostDialog() {
   return (
-    <form action={action} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <div className="grid flex-1 gap-1.5">
-        <Label htmlFor="run-product">Product</Label>
-        <select
-          id="run-product"
-          name="product_id"
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
-          defaultValue={products[0]!.id}
-        >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <ActionDialog triggerLabel="Run cost" title="Run cost now">
+      <RunCostForm />
+    </ActionDialog>
+  );
+}
+
+function RunCostForm() {
+  const [state, action, pending] = useActionState(runCostAction, initial);
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <EntityPicker type="products" name="product_id" label="Product" required />
+      <p className="text-xs text-muted-foreground">
+        Cost-plus products only. List-price variants are ignored by the runner.
+      </p>
       <Button type="submit" disabled={pending}>
         {pending ? "Running…" : "Run cost now"}
       </Button>
@@ -60,12 +51,23 @@ export function RunCostForm({
   );
 }
 
-/** Quick form for supply to log a part quote. */
-export function ManualQuoteForm() {
+export function ManualQuoteDialog() {
+  return (
+    <ActionDialog
+      triggerLabel="Add supplier quote"
+      title="Add supplier quote"
+      triggerVariant="outline"
+    >
+      <ManualQuoteForm />
+    </ActionDialog>
+  );
+}
+
+function ManualQuoteForm() {
   const [state, action, pending] = useActionState(addManualQuoteAction, initial);
   const today = new Date().toISOString().slice(0, 10);
   return (
-    <form action={action} className="grid max-w-2xl gap-3 sm:grid-cols-2">
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
       <div className="grid gap-1.5">
         <Label htmlFor="mq-mpn">MPN</Label>
         <Input id="mq-mpn" name="mpn" required placeholder="STM32H743VIT6" />
@@ -104,32 +106,24 @@ export function ManualQuoteForm() {
   );
 }
 
-/** Quick form for supply to log assembly pricing. */
-export function AssemblyPriceForm({
-  products,
-}: {
-  products: Array<{ id: string; name: string }>;
-}) {
+export function AssemblyPriceDialog() {
+  return (
+    <ActionDialog
+      triggerLabel="Add assembly quote"
+      title="Add assembly price"
+      triggerVariant="outline"
+    >
+      <AssemblyPriceForm />
+    </ActionDialog>
+  );
+}
+
+function AssemblyPriceForm() {
   const [state, action, pending] = useActionState(addAssemblyPriceAction, initial);
   const today = new Date().toISOString().slice(0, 10);
-  if (products.length === 0) return null;
   return (
-    <form action={action} className="grid max-w-2xl gap-3 sm:grid-cols-2">
-      <div className="grid gap-1.5">
-        <Label htmlFor="ap-product">Product</Label>
-        <select
-          id="ap-product"
-          name="product_id"
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
-          defaultValue={products[0]!.id}
-        >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
+      <EntityPicker type="products" name="product_id" label="Product" required />
       <div className="grid gap-1.5">
         <Label htmlFor="ap-assembler">Assembler</Label>
         <Input id="ap-assembler" name="assembler" required placeholder="EMS Partner" />

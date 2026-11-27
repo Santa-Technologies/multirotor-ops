@@ -50,6 +50,7 @@ export type PipedriveStage = {
   id: number;
   name?: string | null;
   pipeline_id?: number | null;
+  order_nr?: number | null;
 };
 
 function apiToken(): string {

@@ -3,8 +3,8 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { CrmCascadePickers } from "@/components/crm-cascade-pickers";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 
 import {
   approveQuoteAction,
@@ -45,16 +45,18 @@ export function ApproveForm({ quoteId }: { quoteId: string }) {
 
 export function MarkSentForm({
   quoteId,
-  companies,
-  deals,
   defaultCompanyId,
+  defaultCompanyLabel,
   defaultDealId,
+  defaultDealLabel,
+  defaultDealUuid,
 }: {
   quoteId: string;
-  companies: Array<{ id: string; label: string }>;
-  deals: Array<{ id: string; label: string }>;
   defaultCompanyId: string | null;
+  defaultCompanyLabel?: string | null;
   defaultDealId: number | null;
+  defaultDealLabel?: string | null;
+  defaultDealUuid?: string | null;
 }) {
   const [state, action, pending] = useActionState(markSentAction, idle);
   return (
@@ -65,44 +67,24 @@ export function MarkSentForm({
         on the linked Pipedrive deal (stage is not changed).
       </p>
       <input type="hidden" name="quote_id" value={quoteId} />
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="sent-company">Company</Label>
-        <select
-          id="sent-company"
-          name="company_id"
-          required
-          defaultValue={defaultCompanyId ?? ""}
-          className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-        >
-          <option value="">Select…</option>
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="sent-deal">Pipedrive deal (optional)</Label>
-        <select
-          id="sent-deal"
-          name="pipedrive_deal_id"
-          defaultValue={defaultDealId != null ? String(defaultDealId) : ""}
-          className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-        >
-          <option value="">—</option>
-          {deals.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <CrmCascadePickers
+        defaults={{
+          companyId: defaultCompanyId ?? undefined,
+          companyLabel: defaultCompanyLabel ?? undefined,
+          dealId: defaultDealUuid ?? undefined,
+          dealLabel:
+            defaultDealLabel ??
+            (defaultDealId != null ? `PD #${defaultDealId}` : undefined),
+          pipedriveDealId: defaultDealId ?? undefined,
+        }}
+        requireCompany
+        showContact={false}
+      />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="post_pipedrive_note" value="1" defaultChecked />
         Post quote summary as Pipedrive deal note
       </label>
-      <Button type="submit" disabled={pending || companies.length === 0}>
+      <Button type="submit" disabled={pending}>
         {pending ? "Sending…" : "Mark sent"}
       </Button>
       <Status state={state} />

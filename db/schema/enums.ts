@@ -94,3 +94,34 @@ export const pipedriveDealStatus = pgEnum("pipedrive_deal_status", [
   "lost",
   "deleted",
 ]);
+
+/** Commercial sales-order lifecycle (intent → quote → order → pay → ship). */
+export const salesOrderStatus = pgEnum("sales_order_status", [
+  "intent",
+  "quoted",
+  "ordered",
+  "invoiced",
+  "paid",
+  "shipped",
+  "cancelled",
+]);
+
+export const salesInvoiceStatus = pgEnum("sales_invoice_status", [
+  "draft",
+  "sent",
+  "paid",
+  "void",
+]);
+
+export const salesShipmentStatus = pgEnum("sales_shipment_status", [
+  "not_ready",
+  "ready",
+  "shipped",
+]);
+
+/** External quote/invoice PDF attach kind. */
+export const salesDocumentKind = pgEnum("sales_document_kind", [
+  "quote_pdf",
+  "invoice_pdf",
+  "other",
+]);

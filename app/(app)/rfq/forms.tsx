@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { ActionDialog } from "@/components/action-dialog";
+import { EntityPicker } from "@/components/entity-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,11 +34,23 @@ function Status({ state }: { state: RfqActionState }) {
   );
 }
 
-export function CreateSupplierForm() {
+export function CreateSupplierDialog() {
+  return (
+    <ActionDialog
+      triggerLabel="Add distributor email"
+      title="Add supplier"
+      description="Email target for outbound RFQs."
+      triggerVariant="outline"
+    >
+      <CreateSupplierForm />
+    </ActionDialog>
+  );
+}
+
+function CreateSupplierForm() {
   const [state, action, pending] = useActionState(createSupplierAction, idle);
   return (
-    <form action={action} className="flex flex-col gap-3 rounded-lg border p-4">
-      <h3 className="text-sm font-medium">Add supplier</h3>
+    <form action={action} className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="supplier-name">Name</Label>
@@ -59,60 +73,29 @@ export function CreateSupplierForm() {
   );
 }
 
-export function SendRfqForm({
-  parts,
-  suppliers,
-}: {
-  parts: Array<{ id: string; mpn: string }>;
-  suppliers: Array<{ id: string; name: string }>;
-}) {
+export function SendRfqDialog() {
+  return (
+    <ActionDialog
+      triggerLabel="Send RFQ"
+      title="Send RFQ"
+      description="One open email per part. A second send for the same part is blocked until the open thread is confirmed or closed."
+    >
+      <SendRfqForm />
+    </ActionDialog>
+  );
+}
+
+function SendRfqForm() {
   const [state, action, pending] = useActionState(sendRfqAction, idle);
   return (
-    <form action={action} className="flex flex-col gap-3 rounded-lg border p-4">
-      <h3 className="text-sm font-medium">Send RFQ</h3>
-      <p className="text-xs text-muted-foreground">
-        One open email per part. A second send for the same part is blocked until the
-        open thread is confirmed or closed.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="rfq-part">Part</Label>
-          <select
-            id="rfq-part"
-            name="part_id"
-            required
-            className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-          >
-            <option value="">Select…</option>
-            {parts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.mpn}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="rfq-supplier">Supplier</Label>
-          <select
-            id="rfq-supplier"
-            name="supplier_id"
-            required
-            className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-          >
-            <option value="">Select…</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="rfq-qty">Qty</Label>
-          <Input id="rfq-qty" name="qty" type="number" min={1} defaultValue={100} required />
-        </div>
+    <form action={action} className="flex flex-col gap-3">
+      <EntityPicker type="parts" name="part_id" label="Part" required />
+      <EntityPicker type="suppliers" name="supplier_id" label="Supplier" required />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="rfq-qty">Qty</Label>
+        <Input id="rfq-qty" name="qty" type="number" min={1} defaultValue={100} required />
       </div>
-      <Button type="submit" disabled={pending || parts.length === 0 || suppliers.length === 0}>
+      <Button type="submit" disabled={pending}>
         {pending ? "Sending…" : "Send RFQ email"}
       </Button>
       <Status state={state} />

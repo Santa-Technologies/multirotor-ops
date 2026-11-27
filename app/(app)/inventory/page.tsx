@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { asc, eq } from "drizzle-orm";
 
-import { getDb } from "@/db";
-import { products } from "@/db/schema";
+import { PageHeaderActions } from "@/components/page-header-actions";
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
 import {
@@ -12,9 +10,9 @@ import {
 } from "@/lib/inventory/queries";
 
 import {
-  CreateLotForm,
-  FinishedGoodsForm,
-  PartStockForm,
+  CreateLotDialog,
+  FinishedGoodsDialog,
+  PartStockDialog,
   UpdateLotForm,
 } from "./forms";
 
@@ -36,24 +34,21 @@ export default async function InventoryPage() {
     listOpenAssemblyLots(),
   ]);
 
-  const db = getDb();
-  const productOptions = await db
-    .select({ id: products.id, name: products.name })
-    .from(products)
-    .where(eq(products.active, true))
-    .orderBy(asc(products.name));
-
-  const partOptions = partRows.map((r) => ({ id: r.part.id, mpn: r.part.mpn }));
-
   return (
     <section className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-xl font-semibold">Inventory</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Parts on the shelf and on order, finished goods, and assembly lots for the weekly
-          review.
-        </p>
-      </div>
+      <PageHeaderActions
+        title="Inventory"
+        description="Parts on the shelf and on order, finished goods, and assembly lots for the weekly review."
+        actions={
+          canEdit ? (
+            <>
+              <PartStockDialog />
+              <FinishedGoodsDialog />
+              <CreateLotDialog />
+            </>
+          ) : null
+        }
+      />
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Assembly lots (open)</h2>
@@ -62,12 +57,16 @@ export default async function InventoryPage() {
         ) : (
           <ul className="divide-y rounded-lg border">
             {openLots.map(({ lot, productName }) => (
-              <li key={lot.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <li
+                key={lot.id}
+                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="text-sm">
                   <span className="font-medium">{productName}</span>
                   <span className="text-muted-foreground">
                     {" "}
-                    · {lot.qty.toLocaleString("de-DE")} units · {lot.status.replaceAll("_", " ")}
+                    · {lot.qty.toLocaleString("de-DE")} units ·{" "}
+                    {lot.status.replaceAll("_", " ")}
                     {" · ETA "}
                     {formatDate(lot.eta)}
                     {lot.assembler ? ` · ${lot.assembler}` : ""}
@@ -108,7 +107,9 @@ export default async function InventoryPage() {
                   <td className="px-3 py-2 tabular-nums">
                     {(stock?.qty ?? 0).toLocaleString("de-DE")}
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">{stock?.notes ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {stock?.notes ?? "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -155,23 +156,6 @@ export default async function InventoryPage() {
           </div>
         )}
       </div>
-
-      {canEdit ? (
-        <div className="grid gap-10 lg:grid-cols-2">
-          <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium">Update part stock</h2>
-            <PartStockForm parts={partOptions} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium">Update finished goods</h2>
-            <FinishedGoodsForm products={productOptions} />
-          </div>
-          <div className="flex flex-col gap-3 lg:col-span-2">
-            <h2 className="text-sm font-medium">Add assembly lot</h2>
-            <CreateLotForm products={productOptions} />
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

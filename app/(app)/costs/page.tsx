@@ -1,25 +1,25 @@
 import type { Metadata } from "next";
 import { desc, eq } from "drizzle-orm";
 
+import { PageHeaderActions } from "@/components/page-header-actions";
 import { getDb } from "@/db";
 import { costRuns, products } from "@/db/schema";
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
 import { formatEuroCents, formatPct } from "@/lib/format/money";
 
-import { AssemblyPriceForm, ManualQuoteForm, RunCostForm } from "./cost-forms";
+import {
+  AssemblyPriceDialog,
+  ManualQuoteDialog,
+  RunCostDialog,
+} from "./cost-forms";
+import { MissingPartsRfqPanel } from "./missing-rfq";
 
 export const metadata: Metadata = { title: "Costs" };
 
 export default async function CostsPage() {
   const user = await requireUser();
   const db = getDb();
-
-  const costPlus = await db
-    .select({ id: products.id, name: products.name })
-    .from(products)
-    .where(eq(products.pricingMode, "cost_plus"))
-    .orderBy(products.name);
 
   const latestRuns = await db
     .select({
@@ -38,16 +38,27 @@ export default async function CostsPage() {
 
   const canRun = canWrite(user.role, "cost_runs", "insert");
   const canSupply = canWrite(user.role, "manual_quotes", "insert");
+  const canRfq = canWrite(user.role, "rfq_threads", "insert");
+
+  const latestWithMissing = latestRuns.find(
+    (run) =>
+      Array.isArray(run.flags) &&
+      run.flags.some((f) => (f as { code?: string }).code === "missing"),
+  );
 
   return (
     <section className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-xl font-semibold">Costs</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Cost per board by volume tier from BOM material, approved distributor API prices
-          (Nexar when configured) and assembly quotes. Weekly cron Monday 06:00 CET.
-        </p>
-      </div>
+      <PageHeaderActions
+        title="Costs"
+        description="Cost per board by volume tier from BOM material, approved distributor API prices (Nexar when configured) and assembly quotes. Weekly cron Monday 06:00 CET."
+        actions={
+          <>
+            {canRun ? <RunCostDialog /> : null}
+            {canSupply ? <ManualQuoteDialog /> : null}
+            {canSupply ? <AssemblyPriceDialog /> : null}
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Latest cost runs</h2>
@@ -116,24 +127,12 @@ export default async function CostsPage() {
         )}
       </div>
 
-      {canRun ? (
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium">Run cost</h2>
-          <RunCostForm products={costPlus} />
-        </div>
-      ) : null}
-
-      {canSupply ? (
-        <>
-          <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium">Add supplier quote</h2>
-            <ManualQuoteForm />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium">Add assembly price</h2>
-            <AssemblyPriceForm products={costPlus} />
-          </div>
-        </>
+      {canRfq && latestWithMissing ? (
+        <MissingPartsRfqPanel
+          costRunId={latestWithMissing.id}
+          productName={latestWithMissing.productName}
+          flags={latestWithMissing.flags as Array<Record<string, unknown>>}
+        />
       ) : null}
     </section>
   );
