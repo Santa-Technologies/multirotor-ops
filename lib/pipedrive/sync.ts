@@ -1,8 +1,8 @@
 import "server-only";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
-import { companies, contacts, pipedriveDeals } from "@/db/schema";
+import { companies, contacts, pipedriveDeals, pipedriveStages } from "@/db/schema";
 import { withActor } from "@/db/with-actor";
 
 import {
@@ -14,12 +14,14 @@ import {
   type PipedriveDeal,
   type PipedriveOrg,
   type PipedrivePerson,
+  type PipedriveStage,
 } from "./client";
 
 export type PipedriveSyncResult = {
   organizations: number;
   persons: number;
   deals: number;
+  stages: number;
 };
 
 function primaryEmail(person: PipedrivePerson): string | null {
@@ -139,6 +141,8 @@ export async function syncPipedrive(actorId: string): Promise<PipedriveSyncResul
       personCount++;
     }
 
+    const stageCount = await upsertStages(tx, stages);
+
     let dealCount = 0;
     const now = new Date();
     for (const deal of deals) {
@@ -164,8 +168,46 @@ export async function syncPipedrive(actorId: string): Promise<PipedriveSyncResul
       organizations: orgLocalId.size,
       persons: personCount,
       deals: dealCount,
+      stages: stageCount,
     };
   });
+}
+
+/** Upserts stage rows for kanban column order (never written back to Pipedrive). */
+async function upsertStages(
+  tx: Parameters<Parameters<typeof withActor>[1]>[0],
+  stages: PipedriveStage[],
+): Promise<number> {
+  let n = 0;
+  for (const stage of stages) {
+    if (!stage.id || stage.pipeline_id == null || !stage.name?.trim()) continue;
+    const [existing] = await tx
+      .select({ id: pipedriveStages.id })
+      .from(pipedriveStages)
+      .where(
+        and(
+          eq(pipedriveStages.pipelineId, stage.pipeline_id),
+          eq(pipedriveStages.stageId, stage.id),
+        ),
+      )
+      .limit(1);
+    const values = {
+      pipelineId: stage.pipeline_id,
+      stageId: stage.id,
+      name: stage.name.trim(),
+      orderNr: stage.order_nr ?? 0,
+    };
+    if (existing) {
+      await tx
+        .update(pipedriveStages)
+        .set(values)
+        .where(eq(pipedriveStages.id, existing.id));
+    } else {
+      await tx.insert(pipedriveStages).values(values);
+    }
+    n++;
+  }
+  return n;
 }
 
 async function upsertDeal(

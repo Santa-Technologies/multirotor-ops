@@ -10,6 +10,7 @@ import {
   requirementStatus,
   sourceChannel,
 } from "./enums";
+import { pipedriveDeals } from "./pipedrive";
 import { rolePolicies } from "./policies";
 import { products } from "./products";
 import { users } from "./users";
@@ -49,8 +50,10 @@ export const requests = pgTable(
     ownerId: uuid().references(() => users.id, { onDelete: "set null" }),
     requirementId: uuid().references(() => requirements.id, { onDelete: "set null" }),
     dueDate: date(),
-    /** Optional soft link to a mirrored Pipedrive deal (phase 8). */
+    /** Pipedrive deal id (int) for PD API notes; prefer `dealId` for joins. */
     pipedriveDealId: integer(),
+    /** Soft FK to mirrored deal row. */
+    dealId: uuid().references(() => pipedriveDeals.id, { onDelete: "set null" }),
   },
   (t) => [
     index().on(t.companyId),
@@ -58,6 +61,7 @@ export const requests = pgTable(
     index().on(t.requirementId),
     index().on(t.ownerId),
     index().on(t.pipedriveDealId),
+    index().on(t.dealId),
     check("requests_quantity_positive", sql`${t.quantity} > 0`),
     ...rolePolicies("requests"),
   ],

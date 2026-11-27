@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { ActionDialog } from "@/components/action-dialog";
+import { EntityPicker } from "@/components/entity-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,34 +28,20 @@ function Status({ state }: { state: InventoryActionState }) {
   return null;
 }
 
-/** Upsert form for part on-hand / on-order stock. */
-export function PartStockForm({
-  parts,
-}: {
-  parts: Array<{ id: string; mpn: string }>;
-}) {
+export function PartStockDialog() {
+  return (
+    <ActionDialog triggerLabel="Update stock" title="Update part stock" triggerVariant="outline">
+      <PartStockForm />
+    </ActionDialog>
+  );
+}
+
+function PartStockForm() {
   const [state, action, pending] = useActionState(upsertPartInventoryAction, initial);
   return (
-    <form action={action} className="grid max-w-2xl gap-3 sm:grid-cols-2">
-      <div className="grid gap-1.5 sm:col-span-2">
-        <Label htmlFor="pi-part">Part</Label>
-        <select
-          id="pi-part"
-          name="part_id"
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
-          defaultValue={parts[0]?.id}
-          required={parts.length > 0}
-        >
-          {parts.length === 0 ? (
-            <option value="">No parts yet — import a BOM</option>
-          ) : (
-            parts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.mpn}
-              </option>
-            ))
-          )}
-        </select>
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <EntityPicker type="parts" name="part_id" label="Part" required />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="pi-hand">On hand</Label>
@@ -76,7 +64,7 @@ export function PartStockForm({
         <Input id="pi-notes" name="notes" placeholder="Optional" />
       </div>
       <div className="flex items-center gap-3 sm:col-span-2">
-        <Button type="submit" disabled={pending || parts.length === 0}>
+        <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save part stock"}
         </Button>
         <Status state={state} />
@@ -85,31 +73,23 @@ export function PartStockForm({
   );
 }
 
-/** Upsert finished-goods qty for a variant. */
-export function FinishedGoodsForm({
-  products,
-}: {
-  products: Array<{ id: string; name: string }>;
-}) {
+export function FinishedGoodsDialog() {
+  return (
+    <ActionDialog
+      triggerLabel="FG"
+      title="Update finished goods"
+      triggerVariant="outline"
+    >
+      <FinishedGoodsForm />
+    </ActionDialog>
+  );
+}
+
+function FinishedGoodsForm() {
   const [state, action, pending] = useActionState(upsertFinishedGoodsAction, initial);
   return (
-    <form action={action} className="grid max-w-2xl gap-3 sm:grid-cols-2">
-      <div className="grid gap-1.5">
-        <Label htmlFor="fg-product">Product</Label>
-        <select
-          id="fg-product"
-          name="product_id"
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
-          defaultValue={products[0]?.id}
-          required
-        >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
+      <EntityPicker type="products" name="product_id" label="Product" required />
       <div className="grid gap-1.5">
         <Label htmlFor="fg-qty">On hand</Label>
         <Input id="fg-qty" name="qty" type="number" min={0} defaultValue={0} required />
@@ -119,7 +99,7 @@ export function FinishedGoodsForm({
         <Input id="fg-notes" name="notes" placeholder="Optional" />
       </div>
       <div className="flex items-center gap-3 sm:col-span-2">
-        <Button type="submit" disabled={pending || products.length === 0}>
+        <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save finished goods"}
         </Button>
         <Status state={state} />
@@ -128,31 +108,19 @@ export function FinishedGoodsForm({
   );
 }
 
-/** Create a new assembly / WIP lot. */
-export function CreateLotForm({
-  products,
-}: {
-  products: Array<{ id: string; name: string }>;
-}) {
+export function CreateLotDialog() {
+  return (
+    <ActionDialog triggerLabel="New lot" title="Add assembly lot">
+      <CreateLotForm />
+    </ActionDialog>
+  );
+}
+
+function CreateLotForm() {
   const [state, action, pending] = useActionState(createAssemblyLotAction, initial);
   return (
-    <form action={action} className="grid max-w-2xl gap-3 sm:grid-cols-2">
-      <div className="grid gap-1.5">
-        <Label htmlFor="lot-product">Product</Label>
-        <select
-          id="lot-product"
-          name="product_id"
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
-          defaultValue={products[0]?.id}
-          required
-        >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
+      <EntityPicker type="products" name="product_id" label="Product" required />
       <div className="grid gap-1.5">
         <Label htmlFor="lot-qty">Quantity</Label>
         <Input id="lot-qty" name="qty" type="number" min={1} defaultValue={100} required />
@@ -184,7 +152,7 @@ export function CreateLotForm({
         <Input id="lot-notes" name="notes" placeholder="Optional" />
       </div>
       <div className="flex items-center gap-3 sm:col-span-2">
-        <Button type="submit" disabled={pending || products.length === 0}>
+        <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Add assembly lot"}
         </Button>
         <Status state={state} />

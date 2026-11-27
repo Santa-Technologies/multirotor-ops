@@ -8,10 +8,6 @@ import { formatEuroCents } from "@/lib/format/money";
 import type { QuoteResult } from "@/lib/pricing";
 import { quoteText } from "@/lib/pricing";
 import { getQuoteDetail } from "@/lib/quotes/lifecycle";
-import {
-  listCompaniesForSelect,
-  listOpenPipedriveDeals,
-} from "@/lib/requests/queries";
 
 import { ApproveForm, MarkSentForm, ReviseForm } from "./forms";
 
@@ -52,11 +48,6 @@ export default async function QuoteDetailPage({ params }: PageProps) {
   const canRevise = canWrite(user.role, "quotes", "insert");
   const needsApproval = quote.approvalStatus === "pending";
   const canApprove = user.role === "admin" && needsApproval && quote.status === "draft";
-
-  const [companies, deals] = await Promise.all([
-    listCompaniesForSelect(),
-    listOpenPipedriveDeals(100),
-  ]);
 
   return (
     <section className="flex flex-col gap-8">
@@ -138,13 +129,10 @@ export default async function QuoteDetailPage({ params }: PageProps) {
           {canSend && quote.status === "draft" ? (
             <MarkSentForm
               quoteId={quote.id}
-              companies={companies.map((c) => ({ id: c.id, label: c.name }))}
-              deals={deals.map(({ deal }) => ({
-                id: String(deal.pipedriveId),
-                label: deal.title,
-              }))}
               defaultCompanyId={quote.companyId}
+              defaultCompanyLabel={companyName}
               defaultDealId={quote.pipedriveDealId}
+              defaultDealUuid={quote.dealId}
             />
           ) : null}
 

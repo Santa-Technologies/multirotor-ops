@@ -36,7 +36,7 @@ export async function syncPipedriveAction(
     revalidatePath("/");
     return {
       status: "ok",
-      message: `Synced ${result.organizations} orgs, ${result.persons} people, ${result.deals} open deals.`,
+      message: `Synced ${result.organizations} orgs, ${result.persons} people, ${result.deals} open deals, ${result.stages} stages.`,
     };
   } catch (error) {
     return {

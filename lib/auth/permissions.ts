@@ -24,6 +24,7 @@ export const WRITE_RULES = {
   contacts: all("sales"),
   // One-way Pipedrive mirror; sales may refresh import.
   pipedrive_deals: all("sales"),
+  pipedrive_stages: all("sales"),
   // Sales logs requests; engineering triages them (status, owner, requirement).
   requests: { insert: ["sales"], update: ["sales", "engineering"], delete: ["sales"] },
   requirements: all("engineering"),
@@ -33,7 +34,8 @@ export const WRITE_RULES = {
   list_prices: all("engineering"),
   bom_versions: all("engineering"),
   bom_lines: all("engineering"),
-  distributors: all(),
+  // Supply may set RFQ emails; engineering may upsert from BOM hosts.
+  distributors: { insert: ["supply", "engineering"], update: ["supply", "engineering"], delete: ["supply"] },
   // Append-only; a trigger rejects updates and deletes for everyone.
   price_snapshots: all(),
   manual_quotes: all("supply"),
@@ -50,6 +52,15 @@ export const WRITE_RULES = {
   cost_runs: all("engineering"),
   quote_settings: all(),
   quotes: all("sales"),
+  // Commercial path: sales owns orders/invoices/docs; supply may update shipment readiness.
+  sales_orders: all("sales"),
+  sales_invoices: all("sales"),
+  sales_documents: all("sales"),
+  sales_shipments: {
+    insert: ["sales", "supply"],
+    update: ["sales", "supply"],
+    delete: ["sales"],
+  },
 } as const satisfies Record<string, WriteRules>;
 
 export type WritableTable = keyof typeof WRITE_RULES;

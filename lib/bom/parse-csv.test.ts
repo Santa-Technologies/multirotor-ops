@@ -14,6 +14,26 @@ describe("suggestBomMapping", () => {
       description: "Description",
     });
   });
+
+  it("maps G5S-style Designation and Link columns", () => {
+    expect(
+      suggestBomMapping([
+        "Id",
+        "Designator",
+        "Footprint",
+        "Qty",
+        "Designation",
+        "Link",
+        "MPN",
+      ]),
+    ).toMatchObject({
+      mpn: "MPN",
+      qtyPerBoard: "Qty",
+      designators: "Designator",
+      description: "Designation",
+      productUrl: "Link",
+    });
+  });
 });
 
 describe("parseBomCsv", () => {
@@ -41,6 +61,8 @@ describe("parseBomCsv", () => {
         designators: "U1",
         sourcing: "distributor",
         alternates: [],
+        productUrl: null,
+        distributorHostKey: null,
       },
     ]);
     expect(result.issues.map((i) => i.message)).toEqual([
@@ -57,6 +79,26 @@ describe("parseBomCsv", () => {
       qtyPerBoard: 2,
       sourcing: "direct_quote",
       alternates: ["DEF", "GHI"],
+    });
+  });
+
+  it("parses Link host into distributorHostKey and Digi-Key manufacturer", () => {
+    const csv = [
+      "MPN,Qty,Designation,Link",
+      "AT7456E,1,OSD,https://www.lcsc.com/product-detail/C82351.html",
+      "CR0402-FX-6040GLF,4,600,https://www.digikey.de/de/products/detail/bourns-inc/CR0402-FX-6040GLF/3783441",
+    ].join("\n");
+    const mapping = suggestBomMapping(["MPN", "Qty", "Designation", "Link"]);
+    const result = parseBomCsv(csv, mapping);
+    expect(result.rows[0]).toMatchObject({
+      mpn: "AT7456E",
+      description: "OSD",
+      distributorHostKey: "lcsc.com",
+    });
+    expect(result.rows[1]).toMatchObject({
+      mpn: "CR0402-FX-6040GLF",
+      manufacturer: "Bourns Inc",
+      distributorHostKey: "digikey.de",
     });
   });
 });

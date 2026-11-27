@@ -27,6 +27,11 @@ export const distributors = pgTable(
     // Only approved distributors count in cost runs (China-free, EU preferred).
     approved: boolean().notNull().default(false),
     apiProvider: text(),
+    /** RFQ mailbox; used for bulk missing-part RFQs from cost runs. */
+    rfqEmail: text(),
+    rfqContactName: text(),
+    /** Canonical hostname keys e.g. digikey.de, lcsc.com (BOM Link parsing). */
+    hostKey: text().unique(),
   },
   () => rolePolicies("distributors"),
 );

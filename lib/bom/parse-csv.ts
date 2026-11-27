@@ -1,3 +1,5 @@
+import { parseProductLink } from "./distributor-host";
+
 export type BomColumnKey =
   | "mpn"
   | "manufacturer"
@@ -5,7 +7,8 @@ export type BomColumnKey =
   | "qtyPerBoard"
   | "designators"
   | "sourcing"
-  | "alternates";
+  | "alternates"
+  | "productUrl";
 
 export type BomColumnMapping = Partial<Record<BomColumnKey, string>>;
 
@@ -17,6 +20,8 @@ export type ParsedBomRow = {
   designators: string | null;
   sourcing: "distributor" | "direct_quote";
   alternates: string[];
+  productUrl: string | null;
+  distributorHostKey: string | null;
 };
 
 export type BomParseIssue = {
@@ -33,11 +38,12 @@ export type BomParseResult = {
 const HEADER_ALIASES: Record<BomColumnKey, string[]> = {
   mpn: ["mpn", "part number", "part_number", "manufacturer part number", "part"],
   manufacturer: ["manufacturer", "mfr", "vendor"],
-  description: ["description", "desc", "value"],
+  description: ["description", "desc", "value", "designation"],
   qtyPerBoard: ["qty", "qty_per_board", "qty per board", "quantity", "qpa"],
   designators: ["designators", "designator", "reference", "refs", "ref des"],
   sourcing: ["sourcing", "source"],
   alternates: ["alternates", "alternate", "alt", "alt mpn"],
+  productUrl: ["link", "url", "product url", "product_url", "digikey", "lcsc"],
 };
 
 /** Splits one CSV line, honouring double-quoted fields. */
@@ -92,6 +98,7 @@ export function suggestBomMapping(headers: string[]): BomColumnMapping {
 /**
  * Parses CSV/TSV text into BOM rows using an explicit column mapping.
  * Skips blank lines; collects per-row issues without aborting the whole file.
+ * Link host → distributor is derived without scraping.
  */
 export function parseBomCsv(text: string, mapping: BomColumnMapping): BomParseResult {
   const lines = text
@@ -150,14 +157,23 @@ export function parseBomCsv(text: string, mapping: BomColumnMapping): BomParseRe
       .map((a) => a.trim())
       .filter(Boolean);
 
+    const linkRaw = cell(mapping.productUrl);
+    const link = linkRaw ? parseProductLink(linkRaw) : null;
+    let manufacturer = cell(mapping.manufacturer) || null;
+    if (!manufacturer && link?.manufacturerSlug) {
+      manufacturer = link.manufacturerSlug;
+    }
+
     rows.push({
       mpn,
-      manufacturer: cell(mapping.manufacturer) || null,
+      manufacturer,
       description: cell(mapping.description) || null,
       qtyPerBoard,
       designators: cell(mapping.designators) || null,
       sourcing,
       alternates,
+      productUrl: link?.url ?? null,
+      distributorHostKey: link?.distributor?.hostKey ?? link?.hostKey ?? null,
     });
   }
 

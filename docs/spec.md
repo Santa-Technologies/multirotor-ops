@@ -27,13 +27,17 @@ One internal web app where **Supply (Volker)**, **Demand (Nils)** and **Tech (Ma
 | Pricing playground             | Yes          | Existing calculator (`lib/pricing`) fed by cost runs; save draft scenarios; copy as **indicative / internal** — not a customer send                                   |
 | Inventory & assembly           | Yes          | Parts on-hand / on-order; finished goods by variant; assembly lots with qty, status, ETA                                                                              |
 | Requests (Marc)                | Yes          | Lightweight in-app work/demand items; owner and status; **optional** link to Pipedrive deal/contact. Not all demand lives in Pipedrive                                |
-| Pipedrive import               | Yes          | One-way import/refresh of companies, contacts and deals/pipelines. Tool does not write deal stages back until customer-facing quotes                                  |
-| Customers (local)              | Thin         | Enough to attach requests; enriched from Pipedrive                                                                                                                    |
+| Pipedrive import               | Yes          | One-way import/refresh of companies, contacts, deals and **stages**. Tool does **not** write deal stages back (kanban is read-only)                                  |
+| Customers                      | Yes          | Pipeline filter + read-only deals kanban; deal detail with Log request / quote / Log order. Companies/contacts are **Pipedrive sync only** (no local create UIs)     |
+| Sales orders / invoices        | Yes          | Deal-centric `sales_orders` → invoices / shipment readiness / external PDF metadata. No accounting PDF generation                                                     |
 | Dashboard                      | Yes          | Cost freshness, flagged parts, stock/WIP/delivery, Marc’s open work, deal snapshot                                                                                    |
 | Customer-facing quote send     | Yes (phase 9)| PDF, approval rules, mark sent, Pipedrive deal note — after playground and inventory. Accounting quote → invoice stays outside until clear buy intent                 |
+| Cost → bulk RFQ                | Yes          | Missing cost flags → Ready-to-RFQ board; distributor `rfq_email`; BOM Link host → Digi-Key / LCSC (no scraping)                                                       |
 | Signal / LinkedIn intake       | v3           | No automatic import. Pasted customer messages, if stored, remain raw text with **no LLM**                                                                             |
 
-Out of near-term scope: invoicing, payment tracking, a customer-facing portal. Invoicing stays in the accounting tool so invoices are not created without buy intent.
+**UX rules:** list/board pages use title + description + top-right action buttons; forms open in Dialog modals; entity picks use searchable paginated `EntityPicker` (`GET /api/entities/{type}`), not full-table SSR option dumps. CRM picks cascade: deal → lock company/contact; company → filter contacts/deals.
+
+Out of near-term scope: scraping Digi-Key/LCSC prices; generating accounting invoices; drag-drop Pipedrive stage write-back; a customer-facing portal.
 
 ## Tech stack and architecture
 
@@ -62,12 +66,13 @@ Postgres tables, all with `id` (uuid), `created_at`, `updated_at`, `created_by`.
 - **products** (variants) – belong to a line; each has its own current BOM and pricing mode (`cost_plus` / `list_price`)
 - **parts** – global MPN/manufacturer row shared across BOMs; one place for price, stock and RFQ state
 - **bom_versions** / **bom_lines** – lines reference `part_id` (qty, designators, sourcing, alternates)
-- **suppliers** / **rfq_threads** – registry and deduped RFQ per part (phase 7)
+- **suppliers** / **rfq_threads** – registry and deduped RFQ per part (phase 7); distributors carry `rfq_email` / `host_key` for BOM Link + bulk RFQ
 - **inventory** – parts on-hand / on-order; finished goods; assembly lots (phase 5)
 - **cost_runs** – per variant BOM; tiers and flags
-- **quotes** – playground drafts first; customer send later
-- **requests** – in-app; optional Pipedrive deal/contact link
-- **companies** / **contacts** – local + Pipedrive ids
+- **quotes** – playground drafts + customer send; optional `deal_id` uuid
+- **requests** – product variation / tech work (not sales orders); optional `deal_id` + Pipedrive int
+- **sales_orders** / **sales_invoices** / **sales_documents** / **sales_shipments** – commercial tracking on a deal
+- **companies** / **contacts** / **pipedrive_deals** / **pipedrive_stages** – Pipedrive one-way mirror
 - Existing: distributors, price_snapshots, manual_quotes, assembly_prices, quote_settings, activity_log, users
 
 ## Pricing engine

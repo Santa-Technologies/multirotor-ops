@@ -138,6 +138,7 @@ export async function createRequestAction(
   const urgency = asEnum(field(formData, "urgency"), URGENCIES);
   const dealRaw = field(formData, "pipedrive_deal_id");
   const pipedriveDealId = dealRaw ? Number.parseInt(dealRaw, 10) : null;
+  const dealId = field(formData, "deal_id") || null;
 
   try {
     await withActor(user.id, async (tx) => {
@@ -154,6 +155,7 @@ export async function createRequestAction(
         status: "new",
         ownerId: field(formData, "owner_id") || null,
         dueDate: field(formData, "due_date") || null,
+        dealId,
         pipedriveDealId:
           pipedriveDealId != null && Number.isFinite(pipedriveDealId)
             ? pipedriveDealId
@@ -162,6 +164,7 @@ export async function createRequestAction(
     });
     revalidatePath("/requests");
     revalidatePath("/");
+    revalidatePath("/customers");
     return { status: "ok", message: "Request logged." };
   } catch {
     return { status: "error", message: "Could not save request." };
@@ -186,6 +189,7 @@ export async function updateRequestAction(
 
   const dealRaw = field(formData, "pipedrive_deal_id");
   const pipedriveDealId = dealRaw ? Number.parseInt(dealRaw, 10) : null;
+  const dealId = field(formData, "deal_id") || null;
 
   try {
     await withActor(user.id, async (tx) => {
@@ -197,6 +201,7 @@ export async function updateRequestAction(
           dueDate: field(formData, "due_date") || null,
           productId: field(formData, "product_id") || null,
           urgency: asEnum(field(formData, "urgency"), URGENCIES),
+          dealId,
           pipedriveDealId:
             pipedriveDealId != null && Number.isFinite(pipedriveDealId)
               ? pipedriveDealId
@@ -206,6 +211,7 @@ export async function updateRequestAction(
     });
     revalidatePath("/requests");
     revalidatePath("/");
+    revalidatePath("/customers");
     return { status: "ok", message: "Request updated." };
   } catch {
     return { status: "error", message: "Could not update request." };

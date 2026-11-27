@@ -1,24 +1,11 @@
 import type { Metadata } from "next";
-import { asc } from "drizzle-orm";
 
-import { getDb } from "@/db";
-import { products } from "@/db/schema";
+import { PageHeaderActions } from "@/components/page-header-actions";
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
-import {
-  listCompaniesForSelect,
-  listContactsForSelect,
-  listOpenPipedriveDeals,
-  listRequests,
-  listUsersForOwnerSelect,
-} from "@/lib/requests/queries";
+import { listRequests } from "@/lib/requests/queries";
 
-import {
-  CreateCompanyForm,
-  CreateContactForm,
-  CreateRequestForm,
-  TriageRequestForm,
-} from "./forms";
+import { CreateRequestDialog, TriageRequestDialog } from "./forms";
 
 export const metadata: Metadata = { title: "Requests" };
 
@@ -32,47 +19,16 @@ export default async function RequestsPage() {
   const user = await requireUser();
   const canCreate = canWrite(user.role, "requests", "insert");
   const canTriage = canWrite(user.role, "requests", "update");
-  const canCompanies = canWrite(user.role, "companies", "insert");
 
-  const db = getDb();
-  const [rows, companyOpts, contactOpts, ownerOpts, dealRows, productList] =
-    await Promise.all([
-      listRequests(),
-      listCompaniesForSelect(),
-      listContactsForSelect(),
-      listUsersForOwnerSelect(),
-      listOpenPipedriveDeals(100),
-      db
-        .select({ id: products.id, name: products.name })
-        .from(products)
-        .orderBy(asc(products.name)),
-    ]);
-
-  const companies = companyOpts.map((c) => ({ id: c.id, label: c.name }));
-  const contacts = contactOpts.map((c) => ({
-    id: c.id,
-    label: c.name,
-    companyId: c.companyId,
-  }));
-  const owners = ownerOpts.map((o) => ({
-    id: o.id,
-    label: o.name?.trim() || o.email,
-  }));
-  const productOptions = productList.map((p) => ({ id: p.id, label: p.name }));
-  const deals = dealRows.map(({ deal }) => ({
-    id: String(deal.pipedriveId),
-    label: `${deal.title}${deal.stageName ? ` · ${deal.stageName}` : ""}`,
-  }));
+  const rows = await listRequests();
 
   return (
     <section className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-xl font-semibold">Requests</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Lightweight work items for Marc and the team. Optional Pipedrive deal link —
-          not every request lives in the CRM.
-        </p>
-      </div>
+      <PageHeaderActions
+        title="Requests"
+        description="Product variation and tech work items. Companies and contacts come from Pipedrive — sync on Customers. Sales orders live under the deal, not here."
+        actions={canCreate ? <CreateRequestDialog /> : null}
+      />
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">All requests</h2>
@@ -120,20 +76,21 @@ export default async function RequestsPage() {
                     </pre>
                   ) : null}
                   {canTriage ? (
-                    <TriageRequestForm
-                      request={{
-                        id: request.id,
-                        status: request.status,
-                        ownerId: request.ownerId,
-                        dueDate: request.dueDate,
-                        productId: request.productId,
-                        urgency: request.urgency,
-                        pipedriveDealId: request.pipedriveDealId,
-                      }}
-                      owners={owners}
-                      products={productOptions}
-                      deals={deals}
-                    />
+                    <div className="mt-3">
+                      <TriageRequestDialog
+                        request={{
+                          id: request.id,
+                          status: request.status,
+                          ownerId: request.ownerId,
+                          dueDate: request.dueDate,
+                          productId: request.productId,
+                          productLabel: productName,
+                          urgency: request.urgency,
+                          dealId: request.dealId,
+                          pipedriveDealId: request.pipedriveDealId,
+                        }}
+                      />
+                    </div>
                   ) : null}
                 </li>
               ),
@@ -141,23 +98,6 @@ export default async function RequestsPage() {
           </ul>
         )}
       </div>
-
-      {canCreate ? (
-        <CreateRequestForm
-          companies={companies}
-          contacts={contacts}
-          products={productOptions}
-          owners={owners}
-          deals={deals}
-        />
-      ) : null}
-
-      {canCompanies ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <CreateCompanyForm />
-          <CreateContactForm companies={companies} />
-        </div>
-      ) : null}
     </section>
   );
 }

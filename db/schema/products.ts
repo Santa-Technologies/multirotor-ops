@@ -39,10 +39,14 @@ export const parts = pgTable(
     manufacturer: text(),
     description: text(),
     defaultSourcing: bomSourcing().notNull().default("distributor"),
+    /** Last BOM Link product URL (Digi-Key / LCSC / …). */
+    productUrl: text(),
+    preferredDistributorId: uuid(),
   },
   (t) => [
     uniqueIndex("parts_mpn_lower").on(sql`lower(${t.mpn})`),
     index().on(t.manufacturer),
+    index().on(t.preferredDistributorId),
     ...rolePolicies("parts"),
   ],
 );
@@ -131,6 +135,8 @@ export const bomLines = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    /** Distributor product URL from the BOM Link column. */
+    productUrl: text(),
   },
   (t) => [
     index().on(t.bomVersionId),

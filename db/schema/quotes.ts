@@ -17,6 +17,7 @@ import { auditColumns } from "./columns";
 import { costRuns } from "./costs";
 import { companies } from "./customers";
 import { approvalStatus, quoteStatus } from "./enums";
+import { pipedriveDeals } from "./pipedrive";
 import { rolePolicies } from "./policies";
 import { products } from "./products";
 import { requests } from "./requests";
@@ -96,11 +97,13 @@ export const quotes = pgTable(
     sentAt: timestamp({ withTimezone: true }),
     validUntil: date(),
     pipedriveDealId: integer(),
+    dealId: uuid().references(() => pipedriveDeals.id, { onDelete: "set null" }),
   },
   (t) => [
     unique().on(t.number, t.version),
     index().on(t.companyId),
     index().on(t.status),
+    index().on(t.dealId),
     check("quotes_number_format", sql`${t.number} ~ '^MR-[0-9]{4}-[0-9]{4}$'`),
     check("quotes_quantity_positive", sql`${t.quantity} > 0`),
     check("quotes_version_positive", sql`${t.version} >= 1`),
