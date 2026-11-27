@@ -3,7 +3,7 @@ import "server-only";
 import { asc, desc, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { parts, rfqOffers, rfqThreads, suppliers } from "@/db/schema";
+import { distributors, parts, rfqOffers, rfqThreads, suppliers } from "@/db/schema";
 
 import { OPEN_RFQ_STATUSES } from "./subject-token";
 
@@ -15,6 +15,12 @@ export async function listActiveSuppliers() {
     .from(suppliers)
     .where(eq(suppliers.active, true))
     .orderBy(asc(suppliers.name));
+}
+
+/** Distributor directory (pricing + RFQ mailbox / address). */
+export async function listDistributors() {
+  const db = getDb();
+  return db.select().from(distributors).orderBy(asc(distributors.name));
 }
 
 /** Open RFQ threads with part and supplier labels. */

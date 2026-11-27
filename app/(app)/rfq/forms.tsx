@@ -11,9 +11,11 @@ import { formatEuroCents } from "@/lib/format/money";
 
 import {
   confirmOfferAction,
+  createDistributorAction,
   createSupplierAction,
   rejectOfferAction,
   sendRfqAction,
+  updateDistributorAction,
   type RfqActionState,
 } from "./actions";
 
@@ -34,12 +36,158 @@ function Status({ state }: { state: RfqActionState }) {
   );
 }
 
+export type DistributorFormValues = {
+  id: string;
+  name: string;
+  rfqEmail: string | null;
+  rfqContactName: string | null;
+  addressLine: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  approved: boolean;
+  hostKey: string | null;
+};
+
+export function CreateDistributorDialog() {
+  return (
+    <ActionDialog
+      triggerLabel="Add distributor"
+      title="Add distributor"
+      description="Directory row for pricing APIs and RFQ mailbox / address."
+      triggerVariant="outline"
+    >
+      <DistributorForm />
+    </ActionDialog>
+  );
+}
+
+export function EditDistributorDialog({
+  distributor,
+}: {
+  distributor: DistributorFormValues;
+}) {
+  return (
+    <ActionDialog
+      triggerLabel="Edit"
+      title={`Edit ${distributor.name}`}
+      description="RFQ email, contact name, and postal address."
+      triggerVariant="outline"
+    >
+      <DistributorForm distributor={distributor} />
+    </ActionDialog>
+  );
+}
+
+function DistributorForm({
+  distributor,
+}: {
+  distributor?: DistributorFormValues;
+}) {
+  const actionFn = distributor ? updateDistributorAction : createDistributorAction;
+  const [state, action, pending] = useActionState(actionFn, idle);
+  const idPrefix = distributor?.id ?? "new";
+
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      {distributor ? (
+        <input type="hidden" name="distributor_id" value={distributor.id} />
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-name-${idPrefix}`}>Name</Label>
+          <Input
+            id={`dist-name-${idPrefix}`}
+            name="name"
+            required
+            defaultValue={distributor?.name ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-email-${idPrefix}`}>RFQ email</Label>
+          <Input
+            id={`dist-email-${idPrefix}`}
+            name="rfq_email"
+            type="email"
+            defaultValue={distributor?.rfqEmail ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-contact-${idPrefix}`}>Contact name</Label>
+          <Input
+            id={`dist-contact-${idPrefix}`}
+            name="rfq_contact_name"
+            defaultValue={distributor?.rfqContactName ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-host-${idPrefix}`}>Host key</Label>
+          <Input
+            id={`dist-host-${idPrefix}`}
+            name="host_key"
+            placeholder="digikey.de"
+            defaultValue={distributor?.hostKey ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor={`dist-address-${idPrefix}`}>Address</Label>
+          <Input
+            id={`dist-address-${idPrefix}`}
+            name="address_line"
+            defaultValue={distributor?.addressLine ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-city-${idPrefix}`}>City</Label>
+          <Input
+            id={`dist-city-${idPrefix}`}
+            name="city"
+            defaultValue={distributor?.city ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-postal-${idPrefix}`}>Postal code</Label>
+          <Input
+            id={`dist-postal-${idPrefix}`}
+            name="postal_code"
+            defaultValue={distributor?.postalCode ?? ""}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`dist-country-${idPrefix}`}>Country</Label>
+          <Input
+            id={`dist-country-${idPrefix}`}
+            name="country"
+            placeholder="DE"
+            defaultValue={distributor?.country ?? ""}
+          />
+        </div>
+        <div className="flex items-center gap-2 self-end pb-2">
+          <input
+            id={`dist-approved-${idPrefix}`}
+            name="approved"
+            type="checkbox"
+            value="true"
+            defaultChecked={distributor?.approved ?? false}
+            className="size-4 rounded border"
+          />
+          <Label htmlFor={`dist-approved-${idPrefix}`}>Approved (China-free)</Label>
+        </div>
+      </div>
+      <Button type="submit" disabled={pending}>
+        {pending ? "Saving…" : distributor ? "Save changes" : "Save distributor"}
+      </Button>
+      <Status state={state} />
+    </form>
+  );
+}
+
 export function CreateSupplierDialog() {
   return (
     <ActionDialog
-      triggerLabel="Add distributor email"
+      triggerLabel="Add supplier email"
       title="Add supplier"
-      description="Email target for outbound RFQs."
+      description="Email target for outbound RFQs (separate from the distributor directory)."
       triggerVariant="outline"
     >
       <CreateSupplierForm />

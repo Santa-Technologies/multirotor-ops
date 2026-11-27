@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
-import { suppliers } from "@/db/schema";
+import { distributors, suppliers } from "@/db/schema";
 import { withActor } from "@/db/with-actor";
 import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
@@ -19,6 +19,92 @@ export type RfqActionState = {
 function field(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function optionalBool(formData: FormData, name: string) {
+  return formData.get(name) === "on" || formData.get(name) === "true";
+}
+
+/** Creates a distributor directory row with RFQ contact and address. */
+export async function createDistributorAction(
+  _prev: RfqActionState,
+  formData: FormData,
+): Promise<RfqActionState> {
+  const user = await requireUser();
+  if (!canWrite(user.role, "distributors", "insert")) {
+    return { status: "error", message: "You cannot create distributors." };
+  }
+
+  const name = field(formData, "name");
+  if (!name) return { status: "error", message: "Name is required." };
+
+  try {
+    await withActor(user.id, async (tx) => {
+      await tx.insert(distributors).values({
+        name,
+        rfqEmail: field(formData, "rfq_email") || null,
+        rfqContactName: field(formData, "rfq_contact_name") || null,
+        addressLine: field(formData, "address_line") || null,
+        city: field(formData, "city") || null,
+        postalCode: field(formData, "postal_code") || null,
+        country: field(formData, "country") || null,
+        approved: optionalBool(formData, "approved"),
+        hostKey: field(formData, "host_key") || null,
+      });
+    });
+    revalidatePath("/rfq");
+    revalidatePath("/costs");
+    return { status: "ok", message: "Distributor saved." };
+  } catch {
+    return {
+      status: "error",
+      message: "Could not save distributor (name or host key may already exist).",
+    };
+  }
+}
+
+/** Updates distributor RFQ contact and postal address fields. */
+export async function updateDistributorAction(
+  _prev: RfqActionState,
+  formData: FormData,
+): Promise<RfqActionState> {
+  const user = await requireUser();
+  if (!canWrite(user.role, "distributors", "update")) {
+    return { status: "error", message: "You cannot update distributors." };
+  }
+
+  const id = field(formData, "distributor_id");
+  const name = field(formData, "name");
+  if (!id || !name) {
+    return { status: "error", message: "Distributor and name are required." };
+  }
+
+  try {
+    await withActor(user.id, async (tx) => {
+      await tx
+        .update(distributors)
+        .set({
+          name,
+          rfqEmail: field(formData, "rfq_email") || null,
+          rfqContactName: field(formData, "rfq_contact_name") || null,
+          addressLine: field(formData, "address_line") || null,
+          city: field(formData, "city") || null,
+          postalCode: field(formData, "postal_code") || null,
+          country: field(formData, "country") || null,
+          approved: optionalBool(formData, "approved"),
+          hostKey: field(formData, "host_key") || null,
+        })
+        .where(eq(distributors.id, id));
+    });
+    revalidatePath("/rfq");
+    revalidatePath("/costs");
+    return { status: "ok", message: "Distributor updated." };
+  } catch {
+    return {
+      status: "error",
+      message: "Could not update distributor (name or host key may already exist).",
+    };
+  }
 }
 
 /** Creates a supplier registry row. */

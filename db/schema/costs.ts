@@ -24,6 +24,10 @@ export const distributors = pgTable(
     ...auditColumns(),
     name: text().notNull().unique(),
     country: text(),
+    /** Street / building line for RFQ and shipping correspondence. */
+    addressLine: text(),
+    city: text(),
+    postalCode: text(),
     // Only approved distributors count in cost runs (China-free, EU preferred).
     approved: boolean().notNull().default(false),
     apiProvider: text(),

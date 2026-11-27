@@ -5,11 +5,18 @@ import { requireUser } from "@/lib/auth/current-user";
 import { canWrite } from "@/lib/auth/permissions";
 import {
   listActiveSuppliers,
+  listDistributors,
   listOpenRfqThreads,
   listPendingRfqOffers,
 } from "@/lib/rfq/queries";
 
-import { ConfirmOfferForm, CreateSupplierDialog, SendRfqDialog } from "./forms";
+import {
+  ConfirmOfferForm,
+  CreateDistributorDialog,
+  CreateSupplierDialog,
+  EditDistributorDialog,
+  SendRfqDialog,
+} from "./forms";
 
 export const metadata: Metadata = { title: "Supplier RFQ" };
 
@@ -22,14 +29,18 @@ function formatDate(iso: string | null) {
 export default async function RfqPage() {
   const user = await requireUser();
   const canSupply = canWrite(user.role, "suppliers", "insert");
+  const canEditDistributors = canWrite(user.role, "distributors", "update");
+  const canCreateDistributors = canWrite(user.role, "distributors", "insert");
   const canSend = canWrite(user.role, "rfq_threads", "insert");
   const canConfirm = canWrite(user.role, "rfq_offers", "update");
 
-  const [supplierRows, openThreads, pendingOffers] = await Promise.all([
-    listActiveSuppliers(),
-    listOpenRfqThreads(),
-    listPendingRfqOffers(),
-  ]);
+  const [supplierRows, distributorRows, openThreads, pendingOffers] =
+    await Promise.all([
+      listActiveSuppliers(),
+      listDistributors(),
+      listOpenRfqThreads(),
+      listPendingRfqOffers(),
+    ]);
 
   return (
     <section className="flex flex-col gap-10">
@@ -38,6 +49,7 @@ export default async function RfqPage() {
         description="Deduped price requests by part. Inbound PDF replies are parsed for review — nothing is written to cost until you confirm."
         actions={
           <>
+            {canCreateDistributors ? <CreateDistributorDialog /> : null}
             {canSupply ? <CreateSupplierDialog /> : null}
             {canSend ? <SendRfqDialog /> : null}
           </>
@@ -113,6 +125,68 @@ export default async function RfqPage() {
                     <td className="px-3 py-2">{formatDate(thread.sentAt)}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium">Distributors</h2>
+        <p className="text-xs text-muted-foreground">
+          Pricing directory plus RFQ mailbox and postal address. Set these here
+          instead of editing the database.
+        </p>
+        {distributorRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No distributors yet.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[44rem] text-left text-sm">
+              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">RFQ email</th>
+                  <th className="px-3 py-2 font-medium">Contact</th>
+                  <th className="px-3 py-2 font-medium">Address</th>
+                  <th className="px-3 py-2 font-medium">Approved</th>
+                  <th className="px-3 py-2 font-medium" />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {distributorRows.map((d) => {
+                  const address = [d.addressLine, d.postalCode, d.city, d.country]
+                    .filter(Boolean)
+                    .join(", ");
+                  return (
+                    <tr key={d.id}>
+                      <td className="px-3 py-2 font-medium">{d.name}</td>
+                      <td className="px-3 py-2">{d.rfqEmail ?? "—"}</td>
+                      <td className="px-3 py-2">{d.rfqContactName ?? "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {address || "—"}
+                      </td>
+                      <td className="px-3 py-2">{d.approved ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2 text-right">
+                        {canEditDistributors ? (
+                          <EditDistributorDialog
+                            distributor={{
+                              id: d.id,
+                              name: d.name,
+                              rfqEmail: d.rfqEmail,
+                              rfqContactName: d.rfqContactName,
+                              addressLine: d.addressLine,
+                              city: d.city,
+                              postalCode: d.postalCode,
+                              country: d.country,
+                              approved: d.approved,
+                              hostKey: d.hostKey,
+                            }}
+                          />
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
