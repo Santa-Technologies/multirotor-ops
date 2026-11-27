@@ -63,21 +63,23 @@ export default async function QuotesPage() {
     });
   }
 
-  const drafts = await db
+  const recent = await db
     .select({
       id: quotes.id,
       number: quotes.number,
+      version: quotes.version,
       quantity: quotes.quantity,
       status: quotes.status,
+      approvalStatus: quotes.approvalStatus,
       createdAt: quotes.createdAt,
+      sentAt: quotes.sentAt,
       productName: products.name,
       outputs: quotes.outputs,
     })
     .from(quotes)
     .innerJoin(products, eq(products.id, quotes.productId))
-    .where(eq(quotes.status, "draft"))
     .orderBy(desc(quotes.createdAt))
-    .limit(20);
+    .limit(30);
 
   const canSave = canWrite(user.role, "quotes", "insert");
 
@@ -86,7 +88,8 @@ export default async function QuotesPage() {
       <div>
         <h1 className="text-xl font-semibold">Quotes</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pricing playground for indicative internal scenarios.{" "}
+          Playground drafts stay indicative/internal. Open a draft to approve, download
+          PDF and mark sent for the customer.{" "}
           <Link href="/costs" className="underline-offset-4 hover:underline">
             Costs
           </Link>{" "}
@@ -98,17 +101,17 @@ export default async function QuotesPage() {
         <PricingPlayground products={playgroundProducts} />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Your role can view drafts but not save new scenarios.
+          Your role can view quotes but not save new scenarios.
         </p>
       )}
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">Recent internal drafts</h2>
-        {drafts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No drafts yet.</p>
+        <h2 className="text-sm font-medium">Recent quotes</h2>
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No quotes yet.</p>
         ) : (
           <ul className="divide-y rounded-lg border text-sm">
-            {drafts.map((d) => {
+            {recent.map((d) => {
               const outputs = d.outputs as {
                 low?: { unitPriceCents?: number };
                 high?: { unitPriceCents?: number };
@@ -121,10 +124,18 @@ export default async function QuotesPage() {
                   className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3"
                 >
                   <span>
-                    <span className="font-medium">{d.number}</span>
+                    <Link
+                      href={`/quotes/${d.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {d.number}
+                    </Link>
                     <span className="text-muted-foreground">
                       {" "}
-                      · {d.productName} · {d.quantity.toLocaleString("de-DE")} units
+                      · v{d.version} · {d.status}
+                      {d.approvalStatus === "pending" ? " · needs approval" : ""}
+                      {" · "}
+                      {d.productName} · {d.quantity.toLocaleString("de-DE")} units
                     </span>
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -132,7 +143,7 @@ export default async function QuotesPage() {
                       ? `${formatEuroCents(low)} – ${formatEuroCents(high)}`
                       : "—"}
                     {" · "}
-                    {d.createdAt.toLocaleString("de-DE")}
+                    {(d.sentAt ?? d.createdAt).toLocaleString("de-DE")}
                   </span>
                 </li>
               );

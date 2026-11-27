@@ -30,7 +30,7 @@ One internal web app where **Supply (Volker)**, **Demand (Nils)** and **Tech (Ma
 | Pipedrive import               | Yes          | One-way import/refresh of companies, contacts and deals/pipelines. Tool does not write deal stages back until customer-facing quotes                                  |
 | Customers (local)              | Thin         | Enough to attach requests; enriched from Pipedrive                                                                                                                    |
 | Dashboard                      | Yes          | Cost freshness, flagged parts, stock/WIP/delivery, Marc’s open work, deal snapshot                                                                                    |
-| Customer-facing quote send     | Later        | PDF, approval rules, mark sent, Pipedrive deal update — after playground and inventory. Accounting quote → invoice stays outside until clear buy intent               |
+| Customer-facing quote send     | Yes (phase 9)| PDF, approval rules, mark sent, Pipedrive deal note — after playground and inventory. Accounting quote → invoice stays outside until clear buy intent                 |
 | Signal / LinkedIn intake       | v3           | No automatic import. Pasted customer messages, if stored, remain raw text with **no LLM**                                                                             |
 
 Out of near-term scope: invoicing, payment tracking, a customer-facing portal. Invoicing stays in the accounting tool so invoices are not created without buy intent.
@@ -165,11 +165,13 @@ Initial tables, RLS, activity log, Pilot H743 quote_settings seed.
 
 **Done when:** Marc can report weekly work from the app; commercial deal overview does not depend on perfect Pipedrive hygiene for tech work items.
 
-### Phase 9 – Later
+### Phase 9 – Customer-facing quote send
 
-- Customer-facing quote: PDF, approval, mark sent, Pipedrive deal update.
-- Extra distributors if needed; deeper PO workflow; large-order playbook.
-- v3: Signal/LinkedIn intake (still no LLM on customer text unless revisited).
+- Customer-facing quote: PDF, approval, mark sent, Pipedrive deal note (no stage write-back).
+- Drafts remain indicative; sent quotes use customer wording; revise → new version.
+- UI: `/quotes/[id]`; PDF at `/api/quotes/[id]/pdf`.
+
+**Still later:** extra distributors; deeper PO workflow; large-order playbook; v3 Signal/LinkedIn intake (still no LLM on customer text unless revisited).
 
 ## Working rules
 

@@ -43,7 +43,7 @@ Supply may write all three; everyone signed in may read.
 | 6     | Nexar adapter writes `price_snapshots` + auto-creates `distributors` (China-free gate); optional later `price_snapshots.part_id`                 |
 | 7     | **Done:** `suppliers`, `part_suppliers`, `rfq_threads` (subject token + Resend ids), `rfq_offers` (pending_confirm → confirmed writes `manual_quotes`) |
 | 8     | **Done:** `pipedrive_deals` (one-way mirror); `requests.pipedrive_deal_id` optional; companies/contacts keep `pipedrive_id`                       |
-| 9     | Quote send fields already largely present (`status`, `sent_at`, approval); tighten copy and workflows                                            |
+| 9     | **Done (workflow):** quote PDF + approve + mark sent + Pipedrive note; revise creates new `version` (fields already present)                     |
 
 ## Who may write what
 

@@ -39,4 +39,25 @@ describe("quoteText (provisional wording)", () => {
     expect(result).toContain("Payment: no deposit, full amount on delivery.");
     expect(result).toContain("Delivery: one batch in month 3 after order.");
   });
+
+  it("uses customer-facing wording when requested", () => {
+    const result = quoteText(
+      calculateQuote(
+        { quantity: 20_000, depositPct: 50, paymentDays: 0, asOf },
+        PILOT_H743_SETTINGS,
+      ),
+      "Pilot H743",
+      {
+        customerFacing: true,
+        quoteNumber: "MR-2026-0001",
+        companyName: "Acme GmbH",
+        validUntil: "2026-12-24",
+      },
+    );
+    expect(result).toContain("Quote number: MR-2026-0001");
+    expect(result).toContain("Customer: Acme GmbH");
+    expect(result).toContain("Quote: Pilot H743, 20,000 units");
+    expect(result).not.toContain("Indicative quote");
+    expect(result).toContain("This quote is valid until 24.12.2026");
+  });
 });
